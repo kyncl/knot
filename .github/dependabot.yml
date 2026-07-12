@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Rust Cargo dependencies
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies"]
+    reviewers: ["kyncl"]
+    # Only create PRs for security updates
+    open-pull-requests-limit: 10
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["ci", "dependencies"]
