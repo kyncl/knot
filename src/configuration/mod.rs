@@ -27,6 +27,12 @@ pub struct MainConfig {
     pub features: FeatureConfig,
 }
 
+impl Default for MainConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MainConfig {
     /// Will read configuration file
     /// Base on it will create main config struct

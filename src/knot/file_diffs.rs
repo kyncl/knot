@@ -118,7 +118,7 @@ impl FileDiffs {
         for file in &self.source_unique {
             table.add_row(vec![
                 Cell::new("+ To Upload").fg(TableColor::Green),
-                Cell::new(&file.name().unwrap_or("unknown".to_string())),
+                Cell::new(file.name().unwrap_or("unknown".to_string())),
                 Cell::new("Missing in remote directory"),
             ]);
         }
@@ -126,7 +126,7 @@ impl FileDiffs {
         for file in &self.remote_unique {
             table.add_row(vec![
                 Cell::new("- Missing Locally").fg(TableColor::Red),
-                Cell::new(&file.name().unwrap_or("unknown".to_string())),
+                Cell::new(file.name().unwrap_or("unknown".to_string())),
                 Cell::new("Exists only in remote directory"),
             ]);
         }
@@ -134,7 +134,7 @@ impl FileDiffs {
         for (source, _remote) in &self.conflicts {
             table.add_row(vec![
                 Cell::new("~ Conflict").fg(TableColor::Yellow),
-                Cell::new(&source.name().unwrap_or("unknown".to_string())),
+                Cell::new(source.name().unwrap_or("unknown".to_string())),
                 Cell::new("Hash mismatch (needs resolution)"),
             ]);
         }
@@ -142,7 +142,7 @@ impl FileDiffs {
         for file in &self.archived {
             table.add_row(vec![
                 Cell::new("* Archived").fg(TableColor::Cyan),
-                Cell::new(&file.name().unwrap_or("unknown".to_string())),
+                Cell::new(file.name().unwrap_or("unknown".to_string())),
                 Cell::new("Ignored/Stored as Archive"),
             ]);
         }

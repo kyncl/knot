@@ -3,6 +3,12 @@ use ignore::gitignore::Gitignore;
 pub struct GlobalConfig {
     pub ignorer: Gitignore,
 }
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GlobalConfig {
     pub fn new() -> Self {
         Self {

@@ -29,7 +29,7 @@ impl Default for PerformanceConfig {
     /// By default size limit is off (when on default limit is 15 GB)
     /// Task limit is 100 000 concurrent tasks
     fn default() -> Self {
-        let size_limit = (15 * 1024_u64.pow(3)) as u64;
+        let size_limit = 15 * 1024_u64.pow(3);
         let task_limit = 100_000;
         Self {
             size_limit,

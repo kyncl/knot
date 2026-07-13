@@ -30,7 +30,7 @@ impl KnotAdapter for SSHAdapter {
             "Resources for SSH communication weren't set properly"
         ))?;
         let session = pool.try_get_session(3).await?;
-        let mut prompt = format!("./.local/bin/knot crawl --compress");
+        let mut prompt = "./.local/bin/knot crawl --compress".to_string();
         let performance = &config.performance;
         let features = &config.features;
         if features.caching {
@@ -40,7 +40,7 @@ impl KnotAdapter for SSHAdapter {
             prompt.push_str(" --gitignore");
         }
         let ignorer = &config.global.ignorer;
-        if ignorer.len() > 0 {
+        if !ignorer.is_empty() {
             // prompt.push_str(&format!(" --ignore_patterns {ignorer:?}"));
         }
         if performance.allow_size_limit {
@@ -68,6 +68,6 @@ impl KnotAdapter for SSHAdapter {
         let credentials = credentials
             .as_ref()
             .ok_or(anyhow!("Credentials for SSH connection were not set"))?;
-        KnotResourcers::new().ssh(&credentials, 1).await
+        KnotResourcers::new().ssh(credentials, 1).await
     }
 }

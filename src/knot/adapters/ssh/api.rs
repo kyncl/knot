@@ -6,8 +6,7 @@ use crate::{BUFFER_SIZE, connection::ssh::pool::SSHPool};
 
 pub async fn test(pool: Arc<SSHPool>) -> Result<()> {
     let session = pool.try_get_session(3).await?;
-    let msg = session.call("echo hello from SSH").await?;
-    println!("{msg:?}");
+    session.call("echo hello from SSH").await?;
     Ok(())
 }
 
@@ -41,8 +40,10 @@ pub async fn upload_and_prepare_server(
     let remote_path = String::from("~/.local/bin/knot");
     println!("Creating remote directory...");
     let mut channel = session.session.channel_open_session().await?;
-    channel.exec(true, format!("mkdir -p ~/.local/bin")).await?;
-    while let Some(_) = channel.wait().await {}
+    channel
+        .exec(true, "mkdir -p ~/.local/bin".to_string())
+        .await?;
+    while channel.wait().await.is_some() {}
 
     println!("Encoding binary to Base64...");
     let b64_encoded = STANDARD.encode(local_binary_bytes);
@@ -57,14 +58,14 @@ pub async fn upload_and_prepare_server(
         upload_channel.data(chunk).await?;
     }
     upload_channel.eof().await?;
-    while let Some(_) = upload_channel.wait().await {}
+    while upload_channel.wait().await.is_some() {}
     println!("Upload complete.");
     println!("Setting executable permissions...");
     let mut chmod_channel = session.session.channel_open_session().await?;
     chmod_channel
         .exec(true, format!("chmod +x {}", remote_path))
         .await?;
-    while let Some(_) = chmod_channel.wait().await {}
+    while chmod_channel.wait().await.is_some() {}
     println!("Remote server binary is ready to run!");
     Ok(())
 }
