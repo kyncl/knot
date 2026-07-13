@@ -8,6 +8,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 pub mod local;
+pub mod ssh;
 
 #[async_trait]
 pub trait KnotAdapter: Send + Sync {

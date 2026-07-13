@@ -1,8 +1,8 @@
 use crate::{
     configuration::MainConfig,
     knot::{
-        KnotType::Local,
-        adapters::{KnotAdapter, local::LocalAdapter},
+        KnotType::{Local, SFTP, SSH},
+        adapters::{KnotAdapter, local::LocalAdapter, ssh::SSHAdapter},
         credentials::KnotCredentials,
         file::KnotFile,
         resources::KnotResourcers,
@@ -23,6 +23,8 @@ pub mod resources;
 
 pub enum KnotType {
     Local,
+    SSH,
+    SFTP,
 }
 
 pub struct Knot {
@@ -49,6 +51,10 @@ impl Knot {
         let adapter: Box<dyn KnotAdapter> = {
             match ktype {
                 Local => Box::new(LocalAdapter {}),
+                SSH => Box::new(SSHAdapter {}),
+                SFTP => {
+                    todo!("Right now there's only Local adapter")
+                }
             }
         };
         let resources = Arc::new(adapter.resources(&credentials, main_config).await?);

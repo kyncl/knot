@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod configuration;
+pub mod connection;
 pub mod ignorer;
 pub mod knot;
 pub mod modes;
