@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::{path::PathBuf, sync::Arc};
-use zstd::{bulk::decompress, decode_all};
+use zstd::decode_all;
 pub mod api;
 
 use crate::{
