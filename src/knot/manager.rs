@@ -1,0 +1,61 @@
+use std::sync::Arc;
+
+use anyhow::Result;
+use futures::future::try_join_all;
+
+use crate::{
+    configuration::MainConfig,
+    knot::{Knot, file::KnotFile},
+    utils::behavior::Behavior,
+};
+
+pub struct KnotManager {
+    pub source: Knot,
+    pub remotes: Vec<RemoteKnot>,
+}
+pub struct RemoteKnot {
+    pub knot: Knot,
+    pub behavior: Behavior,
+}
+impl RemoteKnot {
+    pub fn new(knot: Knot, behavior: Behavior) -> Self {
+        Self { knot, behavior }
+    }
+}
+
+impl KnotManager {
+    pub fn new(source: Knot) -> Self {
+        Self {
+            source,
+            remotes: vec![],
+        }
+    }
+
+    pub fn add_remote(&mut self, remote: Knot, behavior: Behavior) -> &Self {
+        self.remotes.push(RemoteKnot::new(remote, behavior));
+        self
+    }
+
+    pub async fn update_source(&mut self, main_config: Arc<MainConfig>) -> Result<()> {
+        self.source.set_folder(main_config).await
+    }
+    pub async fn get_source(self, main_config: Arc<MainConfig>) -> Result<Vec<KnotFile>> {
+        self.source.get_folder(main_config).await
+    }
+
+    pub async fn update_remotes(&mut self, main_config: Arc<MainConfig>) -> Result<()> {
+        let knots = &mut self.remotes;
+        let futures = knots
+            .iter_mut()
+            .map(|remote| remote.knot.set_folder(main_config.clone()));
+        try_join_all(futures).await?;
+        Ok(())
+    }
+    pub async fn get_remotes(self, main_config: Arc<MainConfig>) -> Result<Vec<Vec<KnotFile>>> {
+        let knots = self.remotes;
+        let futures = knots
+            .iter()
+            .map(|remote| remote.knot.get_folder(main_config.clone()));
+        try_join_all(futures).await
+    }
+}
