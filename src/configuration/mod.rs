@@ -1,6 +1,7 @@
 use crate::{
     configuration::{feature::FeatureConfig, global::GlobalConfig, performance::PerformanceConfig},
-    ignorer::setup_ignorer,
+    ignorer::make_git_ignore,
+    utils::{paths::convert_home_path, remove_duplicates},
 };
 use anyhow::Result;
 use std::{
@@ -70,7 +71,13 @@ impl MainConfig {
     where
         P: AsRef<Path>,
     {
-        let ignorer = setup_ignorer(path, &self, patterns)?;
+        let path = {
+            let path = path.as_ref();
+            let path_str = convert_home_path(path, None)?;
+            PathBuf::from(path_str)
+        };
+        self.global.ignore_patterns = remove_duplicates(&patterns);
+        let ignorer = make_git_ignore(&path, &self.global.ignore_patterns)?;
         self.global.ignorer = ignorer;
         Ok(self)
     }

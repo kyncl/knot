@@ -1,6 +1,6 @@
 # Help
 #  Build the image
-# $ docker build -t sftp-server .
+# $ docker build -f Dockerfile_SFTP -t sftp-server .
 # $ docker run -d \
 #   -p 2222:22 \
 #   -v [PATH/TO/TESTING/PROJECTS]:/home/sftpuser/projects \

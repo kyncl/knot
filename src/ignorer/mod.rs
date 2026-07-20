@@ -1,56 +1,64 @@
-use crate::configuration::MainConfig;
 use anyhow::Result;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use std::path::Path;
 
-pub fn should_ignore(file: &Path, project_path: &Path, ignorer: &Gitignore) -> bool {
+pub fn should_ignore(file: &Path, project_path: &Path, ignorer: &Gitignore, is_dir: bool) -> bool {
     if let Ok(relative_path) = file.strip_prefix(project_path) {
-        let is_match = ignorer.matched(relative_path, false);
+        let is_match = ignorer.matched(relative_path, is_dir);
         is_match.is_ignore()
     } else {
         false
     }
 }
 
-/// It's not really specified, when gitignorer will return error,
-/// so maybe rewrite functions that uses it on Option, but rn it's going to be hard requirement
-fn make_git_ignore<P>(
-    ignore_patterns: &[impl AsRef<str>],
-    gitignore_path: Option<P>,
-) -> Result<Gitignore>
-where
-    P: AsRef<Path>,
-{
-    let mut builder = GitignoreBuilder::new(".");
-    if let Some(gitignore_path) = gitignore_path {
-        builder.add(gitignore_path);
-    }
-    for pattern in ignore_patterns {
-        let pattern_str = pattern.as_ref();
-        if pattern_str.trim().is_empty() {
-            continue;
-        }
-        builder.add_line(None, pattern_str)?;
-    }
-    Ok(builder.build()?)
+pub struct NormalizedPattern {
+    pub override_fmt: String,
+    pub gitignore_fmt: String,
 }
 
-pub fn setup_ignorer<P>(
-    source_dir: P,
-    config: &MainConfig,
-    ignore_list: &[impl AsRef<str>],
-) -> Result<Gitignore>
+pub fn normalize_pattern(raw: &str) -> Option<NormalizedPattern> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() || trimmed.starts_with('#') {
+        return None;
+    }
+    if let Some(stripped) = trimmed.strip_prefix('!') {
+        let clean = stripped.trim_end_matches('/');
+        let override_rule = if clean != stripped {
+            format!("{clean}/**")
+        } else {
+            clean.to_string()
+        };
+        Some(NormalizedPattern {
+            override_fmt: override_rule,
+            gitignore_fmt: format!("!{stripped}"),
+        })
+    } else {
+        let clean = trimmed.trim_end_matches('/');
+        let override_rule = if clean != trimmed {
+            format!("!{clean}/**")
+        } else {
+            format!("!{clean}")
+        };
+        Some(NormalizedPattern {
+            override_fmt: override_rule,
+            gitignore_fmt: trimmed.to_string(),
+        })
+    }
+}
+
+/// It's not really specified, when gitignorer will return error,
+/// so maybe rewrite functions that uses it on Option, but rn it's going to be hard requirement
+pub fn make_git_ignore<P>(root_path: P, ignore_patterns: &[impl AsRef<str>]) -> Result<Gitignore>
 where
     P: AsRef<Path>,
 {
-    let git_ignore_fl = source_dir.as_ref().join(".gitignore");
-    let git_ignore_opt = {
-        if config.features.gitignore {
-            Some(git_ignore_fl)
-        } else {
-            None
+    let root_path = root_path.as_ref();
+    let mut builder = GitignoreBuilder::new(root_path);
+    builder.add(root_path.join(".gitignore"));
+    for pattern in ignore_patterns {
+        if let Some(pattern) = normalize_pattern(pattern.as_ref()) {
+            builder.add_line(None, &pattern.gitignore_fmt)?;
         }
-    };
-    let ignorer = make_git_ignore(ignore_list, git_ignore_opt)?;
-    Ok(ignorer)
+    }
+    Ok(builder.build()?)
 }

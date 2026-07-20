@@ -1,9 +1,11 @@
 use anyhow::{Result, anyhow};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, with::AsString};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 pub struct KnotFile {
+    #[rkyv(with = AsString)]
     pub path: PathBuf,
     pub content_hash: Option<u64>,
     pub is_dir: bool,
@@ -36,14 +38,19 @@ impl KnotFile {
             is_dir,
         }
     }
-    pub fn relative_path(&self, root_path: &Path) -> String {
-        let full_path = Path::new(&self.path);
-        let relative = full_path.strip_prefix(root_path).unwrap_or(full_path);
-
-        relative
-            .to_string_lossy()
-            .replace('\\', "/")
-            .trim_start_matches('/')
-            .to_string()
+    pub fn relative_path<P: AsRef<Path>>(&self, root: P) -> String {
+        let root = root.as_ref();
+        let rel = match self.path.strip_prefix(root) {
+            Ok(p) => p,
+            Err(_) => &self.path,
+        };
+        rel.components()
+            .filter_map(|c| match c {
+                std::path::Component::Normal(s) => s.to_str(),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("/")
+            .replace("\\", "/")
     }
 }

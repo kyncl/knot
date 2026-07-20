@@ -40,11 +40,14 @@ impl KnotManager {
         self.source.set_folder(main_config).await
     }
     pub async fn get_source(self, main_config: Arc<MainConfig>) -> Result<Vec<KnotFile>> {
-        self.source.get_folder(main_config).await
+        self.source.crawl_dir(main_config).await
     }
 
-    pub async fn update_remotes(&mut self, main_config: Arc<MainConfig>) -> Result<()> {
-        let knots = &mut self.remotes;
+    pub async fn update_remotes(
+        remotes: &mut [RemoteKnot],
+        main_config: Arc<MainConfig>,
+    ) -> Result<()> {
+        let knots = remotes;
         let futures = knots
             .iter_mut()
             .map(|remote| remote.knot.set_folder(main_config.clone()));
@@ -55,7 +58,7 @@ impl KnotManager {
         let knots = self.remotes;
         let futures = knots
             .iter()
-            .map(|remote| remote.knot.get_folder(main_config.clone()));
+            .map(|remote| remote.knot.crawl_dir(main_config.clone()));
         try_join_all(futures).await
     }
 }

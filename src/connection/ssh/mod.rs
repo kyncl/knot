@@ -56,7 +56,8 @@ impl Session {
         };
 
         let config = client::Config {
-            inactivity_timeout: Some(Duration::from_secs(5)),
+            inactivity_timeout: Some(Duration::from_secs(300)),
+            keepalive_interval: Some(Duration::from_secs(15)),
             preferred: Preferred {
                 kex: Cow::Owned(vec![
                     russh::kex::CURVE25519_PRE_RFC_8731,
@@ -121,30 +122,43 @@ impl Session {
         channel.exec(true, command).await?;
 
         let mut code = None;
-        // let mut stdout = tokio::io::stdout();
-        let mut bytes = None;
+        let mut collected_bytes = Vec::new();
 
         loop {
-            // There's an event available on the session channel
             let Some(msg) = channel.wait().await else {
                 break;
             };
+
             match msg {
-                // Write data to the terminal
                 ChannelMsg::Data { ref data } => {
-                    bytes = Some(data.clone());
-                    // stdout.write_all(data).await?;
-                    // stdout.flush().await?;
+                    collected_bytes.extend_from_slice(&data[..]);
                 }
-                // The command has returned an exit code
+                ChannelMsg::ExtendedData { ref data, ext: _ } => {
+                    collected_bytes.extend_from_slice(&data[..]);
+                }
                 ChannelMsg::ExitStatus { exit_status } => {
                     code = Some(exit_status);
-                    // cannot leave the loop immediately, there might still be more data to receive
+                }
+                ChannelMsg::Eof => {}
+                ChannelMsg::Close => {
+                    break;
                 }
                 _ => {}
             }
         }
-        Ok((code.expect("program did not exit cleanly"), bytes))
+        let exit_code = code.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Remote SSH command closed without returning an exit status code. Command: '{}'",
+                command
+            )
+        })?;
+        let final_bytes = if collected_bytes.is_empty() {
+            None
+        } else {
+            Some(Bytes::from(collected_bytes))
+        };
+
+        Ok((exit_code, final_bytes))
     }
 
     pub async fn close(&self) -> Result<()> {

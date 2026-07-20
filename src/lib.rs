@@ -4,9 +4,17 @@ pub mod connection;
 pub mod ignorer;
 pub mod knot;
 pub mod modes;
+pub mod tests;
 pub mod utils;
 
 pub const APP_FOLDER: &str = ".knot";
+/// If you name your file with .knot.knot_tmp_, sorry but bad naming
+/// (yes extra knot is just for lesser chance of rewriting wrong file)
+pub const TEMPORAL_SUFFIX: &str = "_knot.knot_tmp";
 pub const IGNORE_PREFIX_FILE: &str = "knot-ignore";
 pub const ARCHIVE_PREFIX: &str = "KNOT-ARCHIVE__";
-pub const BUFFER_SIZE: u32 = 16_000;
+/// This buffer is optimized for cache
+pub const BUFFER_SIZE: usize = 16_000;
+/// This buffer is optimized for large transfer
+pub const BUFFER_SIZE_TRANSFER: usize = 128 * 1024;
+pub const STABLE_CHANNELS_PER_SESSION: usize = 16;

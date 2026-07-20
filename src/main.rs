@@ -1,11 +1,18 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
+use inquire::{Password, Text};
 use knot::{
-    cli::{KnotArgs, ModeArgs},
+    cli::{KnotArgs, ModeArgs, autocomplete::path::FilePathCompleter},
     configuration::MainConfig,
-    modes::crawl::crawl,
+    knot::{
+        Knot, KnotType, adapters::ssh::api::upload_and_prepare_server,
+        credentials::KnotCredentials, manager::KnotManager,
+    },
+    modes::{crawl::crawl, file::handle_files},
+    utils::behavior::Behavior,
 };
 use parse_size::parse_size;
+use std::{fs, sync::Arc, time::Instant};
 use tracing_appender::non_blocking;
 use tracing_subscriber::EnvFilter;
 
@@ -20,7 +27,54 @@ async fn main() -> Result<()> {
 
     match user_args.mode {
         ModeArgs::Sync => {
-            todo!("Working in progress");
+            let path = Text::new("Path to folder for checking")
+                .with_autocomplete(FilePathCompleter::default())
+                .prompt()?;
+            let main_config = Arc::new(
+                MainConfig::new()
+                    .caching(true)
+                    .gitignore(true)
+                    .task_limit(10_000)
+                    .file_size_limit(parse_size("15GB")?)
+                    .ignorer(&path, &["node_modules/"])?,
+            );
+            let source = Knot::new(&KnotType::Local, &path, None).await?;
+            let mut knots = KnotManager::new(source);
+
+            let path = Text::new("Path to folder for checking in SSH")
+                .with_help_message(
+                    "Please write absolute path to rule out any potential misinterpretation.\nOnly possible one is '~' for Linux systems",
+                )
+                .prompt()?;
+            let remote = Knot::new(
+                &KnotType::SSH,
+                &path,
+                Some(
+                    KnotCredentials::new()
+                        .host("localhost")
+                        .port(2222)
+                        .username("root")
+                        .auth_password(Password::new("Auth for localhost").prompt()?)
+                        .limit(100),
+                ),
+            )
+            .await?;
+            {
+                let pool = remote.resources.ssh.clone().unwrap();
+                upload_and_prepare_server(pool, &fs::read("./target/release/knot")?).await?;
+            }
+            knots.add_remote(remote, Behavior::default());
+
+            let start_time = Instant::now();
+            let source_fut = knots.source.set_folder(main_config.clone());
+            let remotes_fut = KnotManager::update_remotes(&mut knots.remotes, main_config);
+            tokio::try_join!(source_fut, remotes_fut)?;
+            println!("Update took: {:0.2?}", start_time.elapsed());
+
+            for remote in &knots.remotes {
+                let source = &knots.source;
+                source.sync(remote).await?;
+            }
         }
         ModeArgs::Crawl {
             format,
@@ -50,6 +104,7 @@ async fn main() -> Result<()> {
                 .ignorer(&crawl_path, &patterns)?;
             crawl(format, compress, crawl_path, config).await?;
         }
+        ModeArgs::File { cmd } => handle_files(cmd).await?,
     };
     Ok(())
 }

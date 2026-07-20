@@ -31,6 +31,17 @@ cd knot
 make install
 ```
 
+# Knots
+While doing configuration you will have to create some knots. We have primarily two version, source and remote.
+Source is in 99% you current working device and remote is probably your server. Here comes the biggest problem.
+Source knot can have any OS, as long as you have a compiled version. This should work on remote too, but the whole
+communication is right now only tested on remote knot running Linux.
+
+Is this pointless note? Most likely, but it's for people, who will open issues about, how this project 
+doesn't work on windows servers through SSH. Right now this project isn't at stage, where I can make this work sorry.
+
+Thanks and have fun <3.
+
 # License & Commercial Use
 Knot is licensed under the **GPLv3**. 
 

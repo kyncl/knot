@@ -21,16 +21,12 @@ impl Manager for SSHManager {
     async fn recycle(
         &self,
         session: &mut Self::Type,
-        metrics: &Metrics,
+        _metrics: &Metrics,
     ) -> RecycleResult<Self::Error> {
-        // Only run the heavy `ls` check if the connection
-        // has been idle for more than 30 seconds.
-        if metrics.last_used() > Duration::from_secs(30) {
-            let test = session.call("ls").await;
-            if let Err(e) = test {
-                warn!("SSH recycle test failed: {:?}", e);
-                return Err(RecycleError::Message("SSH session is dead".into()));
-            }
+        if session.session.is_closed() {
+            return Err(RecycleError::Message(
+                "SSH session driver has terminated".into(),
+            ));
         }
         Ok(())
     }
@@ -41,6 +37,8 @@ pub type Object = managed::Object<SSHManager>;
 
 #[derive(Clone)]
 pub struct SSHPool {
+    /// Number of connections that pool has
+    pub size: usize,
     pool: Pool,
 }
 
@@ -54,7 +52,10 @@ impl SSHPool {
             .build()
             .map_err(|e| anyhow!("Failed to build pool: {}", e))?;
 
-        let instance = Self { pool };
+        let instance = Self {
+            pool,
+            size: pool_size,
+        };
         let mut warm_up_tasks = Vec::with_capacity(pool_size);
         for _ in 0..pool_size {
             let instance_clone = instance.clone();

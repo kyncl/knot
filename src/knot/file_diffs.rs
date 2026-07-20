@@ -1,20 +1,35 @@
 use crate::{
     ARCHIVE_PREFIX,
+    cli::visualization::file_diffs::{
+        interactive::file_diff_visualization_interactive, table::file_diff_visualization_table,
+    },
     knot::{Knot, file::KnotFile},
 };
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 /// When comparing Vec<KnotFile> FilesDiffs can separate
 /// all possible differences
 pub struct FileDiffs {
     /// Files that are missing inside remote folder  
     pub source_unique: Vec<KnotFile>,
+
     /// Files that are missing inside source folder  
     pub remote_unique: Vec<KnotFile>,
+
     /// Files that has both directories, but different hash
     pub conflicts: Vec<(KnotFile, KnotFile)>,
+
     /// Files that has Archive prefix in name
     pub archived: Vec<KnotFile>,
+
+    /// Path, where the source files lives
+    pub source_root_path: PathBuf,
+
+    /// Path, where the remote files lives
+    pub remote_root_path: PathBuf,
 }
 impl FileDiffs {
     pub fn new<P>(
@@ -87,73 +102,16 @@ impl FileDiffs {
             remote_unique,
             conflicts,
             archived,
+            source_root_path: source_path,
+            remote_root_path: remote_path,
         }
     }
 
-    pub fn print_visualization(&self) {
-        use colored::Colorize;
-        use comfy_table::{Attribute, Cell, Color as TableColor, Table};
-
-        let total_issues = self.source_unique.len()
-            + self.remote_unique.len()
-            + self.conflicts.len()
-            + self.archived.len();
-        if total_issues == 0 {
-            println!(
-                "{}",
-                "✔ Both directories are perfectly synchronized."
-                    .green()
-                    .bold()
-            );
-            return;
+    pub fn visualization(&self) {
+        if let Err(error_msg) = file_diff_visualization_interactive(self) {
+            println!("Couldn't create interactive visualization, because of: {error_msg}");
+            file_diff_visualization_table(self);
         }
-
-        let mut table = Table::new();
-        table.set_header(vec![
-            Cell::new("Status").add_attribute(Attribute::Bold),
-            Cell::new("File Name").add_attribute(Attribute::Bold),
-            Cell::new("Resolution / Detail").add_attribute(Attribute::Bold),
-        ]);
-
-        for file in &self.source_unique {
-            table.add_row(vec![
-                Cell::new("+ To Upload").fg(TableColor::Green),
-                Cell::new(file.name().unwrap_or("unknown".to_string())),
-                Cell::new("Missing in remote directory"),
-            ]);
-        }
-
-        for file in &self.remote_unique {
-            table.add_row(vec![
-                Cell::new("- Missing Locally").fg(TableColor::Red),
-                Cell::new(file.name().unwrap_or("unknown".to_string())),
-                Cell::new("Exists only in remote directory"),
-            ]);
-        }
-
-        for (source, _remote) in &self.conflicts {
-            table.add_row(vec![
-                Cell::new("~ Conflict").fg(TableColor::Yellow),
-                Cell::new(source.name().unwrap_or("unknown".to_string())),
-                Cell::new("Hash mismatch (needs resolution)"),
-            ]);
-        }
-
-        for file in &self.archived {
-            table.add_row(vec![
-                Cell::new("* Archived").fg(TableColor::Cyan),
-                Cell::new(file.name().unwrap_or("unknown".to_string())),
-                Cell::new("Ignored/Stored as Archive"),
-            ]);
-        }
-
-        println!("{table}");
-        println!(
-            "\nSummary: {} pending uploads | {} missing locally | {} conflicts",
-            self.source_unique.len().to_string().green(),
-            self.remote_unique.len().to_string().red(),
-            self.conflicts.len().to_string().yellow(),
-        );
     }
 }
 

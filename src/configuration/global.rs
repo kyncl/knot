@@ -2,6 +2,7 @@ use ignore::gitignore::Gitignore;
 
 pub struct GlobalConfig {
     pub ignorer: Gitignore,
+    pub ignore_patterns: Vec<String>,
 }
 impl Default for GlobalConfig {
     fn default() -> Self {
@@ -13,6 +14,7 @@ impl GlobalConfig {
     pub fn new() -> Self {
         Self {
             ignorer: Gitignore::empty(),
+            ignore_patterns: vec![],
         }
     }
 

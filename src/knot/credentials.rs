@@ -21,12 +21,19 @@ pub struct KnotCredentials {
     pub host: String,
     pub port: u16,
     pub auth: AuthMethod,
+    /// Number of allowed connections for knot
+    /// Why here? Because it's more convenient
+    /// With this Knot::new doesn't need new parameter `connection_limit` just
+    /// for it to be `1`, which is literally default
+    /// It kind of makes sense all other properties here are useless for local knot
+    pub connection_limit: usize,
 }
 
 impl KnotCredentials {
     pub fn new() -> Self {
         Self {
             port: 22,
+            connection_limit: 1,
             ..Default::default()
         }
     }
@@ -43,6 +50,12 @@ impl KnotCredentials {
 
     pub fn port(mut self, port: u16) -> Self {
         self.port = port;
+        self
+    }
+
+    /// Sets number of connection
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.connection_limit = limit;
         self
     }
 

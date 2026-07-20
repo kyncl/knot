@@ -1,3 +1,5 @@
+use strum::Display;
+
 #[derive(Default)]
 pub struct Behavior {
     pub uniques: UniqueBehavior,
@@ -10,7 +12,7 @@ impl Behavior {
 }
 
 /// If Knot finds unique files, this will determinant how to handle it
-#[derive(Default)]
+#[derive(Default, Debug, Display)]
 pub enum UniqueBehavior {
     #[default]
     Archive,
@@ -27,7 +29,7 @@ pub enum UniqueBehavior {
 }
 
 /// If content of files differs, this will determinant how to handle it
-#[derive(Default)]
+#[derive(Default, Debug, Display)]
 pub enum ConflictBehavior {
     /// If you want to always prioritize newer based on modified time
     #[default]

@@ -10,7 +10,7 @@ impl Autocomplete for FilePathCompleter {
         &mut self,
         input: &str,
     ) -> Result<Vec<String>, inquire::error::CustomUserError> {
-        let input_path = convert_home_path(input)?;
+        let input_path = convert_home_path(input, None)?;
         let mut results = Vec::new();
         let dir_read = match std::fs::read_dir(&input_path) {
             Ok(dir) => dir,

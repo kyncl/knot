@@ -1,8 +1,7 @@
+use crate::{BUFFER_SIZE_TRANSFER, connection::ssh::pool::SSHPool};
 use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::{path::Path, sync::Arc};
-
-use crate::{BUFFER_SIZE, connection::ssh::pool::SSHPool};
 
 pub async fn test(pool: Arc<SSHPool>) -> Result<()> {
     let session = pool.try_get_session(3).await?;
@@ -54,7 +53,7 @@ pub async fn upload_and_prepare_server(
     let cmd = format!("base64 -d > {}", remote_path);
     upload_channel.exec(true, cmd).await?;
 
-    for chunk in b64_encoded.as_bytes().chunks(BUFFER_SIZE as usize) {
+    for chunk in b64_encoded.as_bytes().chunks(BUFFER_SIZE_TRANSFER as usize) {
         upload_channel.data(chunk).await?;
     }
     upload_channel.eof().await?;

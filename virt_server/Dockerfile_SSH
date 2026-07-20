@@ -1,11 +1,25 @@
-# docker build -t ssh-server .
-# docker run -d -p 2222:22 --name ssh-container ssh-server
-# ssh root@localhost -p 2222
+# docker build -f Dockerfile_SSH -t ssh-server .
+# mkdir -p ../testing/ssh
+#   docker run -d \
+#   --net=host \
+#   -v ../testing/ssh:/target \
+#   --name ssh-container ssh-server
+# ssh root@localhost
 FROM ubuntu:latest
-RUN apt-get update && apt-get install -y openssh-server
-RUN mkdir -p /var/run/sshd
-RUN echo 'root:password' | chpasswd
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-EXPOSE 22
+
+# Install SSH, set root password, allow root login, and tune SSH for high-concurrency stream throughput
+RUN apt-get update && \
+    apt-get install -y openssh-server && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /var/run/sshd && \
+    echo 'root:password' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd && \
+    echo 'Port 2222' >> /etc/ssh/sshd_config && \
+    echo 'LogLevel QUIET' >> /etc/ssh/sshd_config && \
+    echo 'UseDNS no' >> /etc/ssh/sshd_config && \
+    echo 'MaxStartups 1000:30:1000' >> /etc/ssh/sshd_config && \
+    echo 'MaxSessions 1000' >> /etc/ssh/sshd_config
+
+EXPOSE 2222
 CMD ["/usr/sbin/sshd", "-D"]
