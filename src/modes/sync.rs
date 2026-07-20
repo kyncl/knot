@@ -197,9 +197,10 @@ async fn execute_optimized_deletes(unique_files: &[KnotFile], target_knot: &Knot
 
     for file in targets {
         if let Some(ref parent_path) = last_dir_path
-            && file.path.starts_with(parent_path) {
-                continue;
-            }
+            && file.path.starts_with(parent_path)
+        {
+            continue;
+        }
         if file.is_dir {
             last_dir_path = Some(file.path.clone());
         }

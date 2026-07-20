@@ -39,9 +39,10 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
         let mut ov_builder = OverrideBuilder::new(folder);
         for pattern in &config.global.ignore_patterns {
             if let Some(normalized_pattern) = normalize_pattern(pattern)
-                && let Err(e) = ov_builder.add(&normalized_pattern.override_fmt) {
-                    eprintln!("Warning: Invalid ignore pattern `{pattern}`: {e}");
-                }
+                && let Err(e) = ov_builder.add(&normalized_pattern.override_fmt)
+            {
+                eprintln!("Warning: Invalid ignore pattern `{pattern}`: {e}");
+            }
         }
         if let Ok(overrides) = ov_builder.build() {
             builder.overrides(overrides);
@@ -60,14 +61,15 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
             let absolute_path = entry.path().to_path_buf();
 
             if let Some(file_name) = absolute_path.file_name().and_then(|n| n.to_str())
-                && file_name.ends_with(TEMPORAL_SUFFIX) {
-                    if let Err(err) = std::fs::remove_file(&absolute_path) {
-                        debug!("Couldn't remove temporal file due to: {err}");
-                    } else {
-                        debug!("Successfully removed {absolute_path:?}");
-                    }
-                    return WalkState::Continue;
+                && file_name.ends_with(TEMPORAL_SUFFIX)
+            {
+                if let Err(err) = std::fs::remove_file(&absolute_path) {
+                    debug!("Couldn't remove temporal file due to: {err}");
+                } else {
+                    debug!("Successfully removed {absolute_path:?}");
                 }
+                return WalkState::Continue;
+            }
 
             if let Ok(metadata) = entry.metadata() {
                 let is_dir = metadata.is_dir();

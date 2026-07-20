@@ -53,12 +53,8 @@ pub async fn stream_rewrite_ssh(
     }
 
     match exit_code {
-        Some(0) => {
-            Ok(())
-        }
-        Some(code) => {
-            Err(anyhow!("Streamlined upload failed with exit code {code}"))
-        }
+        Some(0) => Ok(()),
+        Some(code) => Err(anyhow!("Streamlined upload failed with exit code {code}")),
         None => Err(anyhow!("Channel closed before receiving an exit status")),
     }
 }

@@ -168,9 +168,10 @@ impl KnotAdapter for SSHAdapter {
         let mut optimized_dirs: Vec<PathBuf> = Vec::with_capacity(targets.len());
         for dir in targets.into_iter().rev() {
             if let Some(last_added) = optimized_dirs.last()
-                && last_added.starts_with(&dir) {
-                    continue;
-                }
+                && last_added.starts_with(&dir)
+            {
+                continue;
+            }
             optimized_dirs.push(dir);
         }
         for chunk in optimized_dirs.chunks(100) {
