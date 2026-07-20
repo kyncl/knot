@@ -53,7 +53,7 @@ pub async fn upload_and_prepare_server(
     let cmd = format!("base64 -d > {}", remote_path);
     upload_channel.exec(true, cmd).await?;
 
-    for chunk in b64_encoded.as_bytes().chunks(BUFFER_SIZE_TRANSFER as usize) {
+    for chunk in b64_encoded.as_bytes().chunks(BUFFER_SIZE_TRANSFER) {
         upload_channel.data(chunk).await?;
     }
     upload_channel.eof().await?;

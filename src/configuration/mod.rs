@@ -76,7 +76,7 @@ impl MainConfig {
             let path_str = convert_home_path(path, None)?;
             PathBuf::from(path_str)
         };
-        self.global.ignore_patterns = remove_duplicates(&patterns);
+        self.global.ignore_patterns = remove_duplicates(patterns);
         let ignorer = make_git_ignore(&path, &self.global.ignore_patterns)?;
         self.global.ignorer = ignorer;
         Ok(self)

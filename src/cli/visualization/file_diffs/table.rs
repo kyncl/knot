@@ -12,7 +12,7 @@ const MAX_ROWS_PER_TABLE: usize = 25;
 
 pub fn file_diff_visualization_table(diffs: &FileDiffs) {
     let term_width = terminal_size::terminal_size()
-        .map(|(terminal_size::Width(w), _)| w as u16)
+        .map(|(terminal_size::Width(w), _)| w)
         .unwrap_or(80);
     println!("\n{}", "=== SYNCHRONIZATION REPORT ===".bold().cyan());
     println!(

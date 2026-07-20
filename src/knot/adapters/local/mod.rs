@@ -69,7 +69,7 @@ impl KnotAdapter for LocalAdapter {
             if let Some(foreign_pool) = &foreign_knot.resources.ssh {
                 let foreign_session = foreign_pool.try_get_session(3).await?;
                 stream_rewrite_ssh(
-                    &path,
+                    path,
                     foreign_knot,
                     foreign_session,
                     &temporal_file,
@@ -80,7 +80,7 @@ impl KnotAdapter for LocalAdapter {
                 tokio::fs::copy(path, &temporal_file).await?;
                 foreign_knot.rename(&temporal_file, foreign_path).await
             } else {
-                classic_rewrite(foreign_knot, &path, &temporal_file, foreign_path).await
+                classic_rewrite(foreign_knot, path, &temporal_file, foreign_path).await
             }
         };
 
@@ -162,11 +162,10 @@ impl KnotAdapter for LocalAdapter {
         targets.sort();
         let mut optimized_dirs: Vec<PathBuf> = Vec::with_capacity(targets.len());
         for dir in targets.into_iter().rev() {
-            if let Some(last_added) = optimized_dirs.last() {
-                if last_added.starts_with(&dir) {
+            if let Some(last_added) = optimized_dirs.last()
+                && last_added.starts_with(&dir) {
                     continue;
                 }
-            }
             optimized_dirs.push(dir);
         }
         for dir in optimized_dirs {

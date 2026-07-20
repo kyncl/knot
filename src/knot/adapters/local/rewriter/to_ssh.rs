@@ -46,22 +46,19 @@ pub async fn stream_rewrite_ssh(
     channel.eof().await?;
     let mut exit_code = None;
     while let Some(msg) = channel.wait().await {
-        match msg {
-            russh::ChannelMsg::ExitStatus { exit_status } => {
-                exit_code = Some(exit_status);
-                break;
-            }
-            _ => {}
+        if let russh::ChannelMsg::ExitStatus { exit_status } = msg {
+            exit_code = Some(exit_status);
+            break;
         }
     }
 
     match exit_code {
         Some(0) => {
-            return Ok(());
+            Ok(())
         }
         Some(code) => {
-            return Err(anyhow!("Streamlined upload failed with exit code {code}"));
+            Err(anyhow!("Streamlined upload failed with exit code {code}"))
         }
-        None => return Err(anyhow!("Channel closed before receiving an exit status")),
+        None => Err(anyhow!("Channel closed before receiving an exit status")),
     }
 }

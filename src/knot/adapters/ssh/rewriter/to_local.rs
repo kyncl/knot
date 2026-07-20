@@ -53,6 +53,6 @@ impl SSHAdapter {
             ));
         }
         tokio::fs::rename(temporal_file, foreign_path).await?;
-        return Ok(());
+        Ok(())
     }
 }
