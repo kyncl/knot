@@ -2,6 +2,7 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 use inquire::{Password, Text};
 use knot::{
+    APP_FOLDER,
     cli::{KnotArgs, ModeArgs, autocomplete::path::FilePathCompleter},
     configuration::MainConfig,
     knot::{
@@ -36,7 +37,7 @@ async fn main() -> Result<()> {
                     .gitignore(true)
                     .task_limit(10_000)
                     .file_size_limit(parse_size("15GB")?)
-                    .ignorer(&path, &["node_modules/"])?,
+                    .ignorer(&path, &["node_modules/", APP_FOLDER])?,
             );
             let source = Knot::new(&KnotType::Local, &path, None).await?;
             let mut knots = KnotManager::new(source);

@@ -1,7 +1,41 @@
+use crate::APP_FOLDER;
 use anyhow::{Result, anyhow};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, with::AsString};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+pub type CacheMap = HashMap<String, KnotFile>;
+pub type ArchivedCacheMap = <CacheMap as Archive>::Archived;
+pub fn load_cache(folder: &Path) -> Option<HashMap<String, KnotFile>> {
+    let path = folder.join(APP_FOLDER).join("cache");
+    let bytes = std::fs::read(path).ok()?;
+    rkyv::from_bytes::<HashMap<String, KnotFile>, rkyv::rancor::Error>(&bytes).ok()
+}
+
+pub fn save_cache(folder: &Path, files: &[KnotFile]) -> Result<()> {
+    let app_dir = folder.join(APP_FOLDER);
+    if !app_dir.exists() {
+        std::fs::create_dir_all(&app_dir)?;
+    }
+    let cache_path = app_dir.join("cache");
+    let mut cache_map: CacheMap = HashMap::new();
+    for file in files {
+        if file.content_hash.is_some() {
+            let path_str = file.path.to_string_lossy().into_owned();
+            cache_map.insert(path_str, file.clone());
+        }
+    }
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&cache_map)
+        .map_err(|e| anyhow!("Failed to serialize cache with rkyv: {e}"))?;
+    let mut file = std::fs::File::create(cache_path)?;
+    file.write_all(&bytes)?;
+    file.flush()?;
+    Ok(())
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 pub struct KnotFile {

@@ -2,24 +2,38 @@ use std::{
     fs::File,
     io::Read,
     path::Path,
-    sync::{Arc, mpsc},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
     thread,
     time::SystemTime,
 };
 
 use crate::{
-    BUFFER_SIZE, TEMPORAL_SUFFIX, configuration::MainConfig, ignorer::normalize_pattern,
-    knot::file::KnotFile,
+    BUFFER_SIZE, TEMPORAL_SUFFIX,
+    configuration::MainConfig,
+    ignorer::normalize_pattern,
+    knot::file::{KnotFile, load_cache, save_cache},
 };
 use anyhow::Result;
 use ignore::{WalkBuilder, WalkState, overrides::OverrideBuilder};
-use tracing::debug;
+use tracing::{debug, warn};
 use xxhash_rust::xxh3::Xxh3;
 
 pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<KnotFile>> {
     let (tx, rx) = mpsc::channel();
     let size_limit = config.performance.size_limit;
     let count = thread::available_parallelism()?.get();
+
+    let cache = if config.features.caching {
+        load_cache(folder)
+    } else {
+        None
+    }
+    .map(Arc::new);
+    let should_cache = Arc::new(AtomicBool::new(false));
 
     let mut builder = WalkBuilder::new(folder);
     builder
@@ -53,12 +67,16 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
     walker.run(|| {
         let tx = tx.clone();
         let config = config.clone();
+        let cache = cache.clone();
+        let should_cache = Arc::clone(&should_cache);
+
         Box::new(move |result| {
             let entry = match result {
                 Ok(e) => e,
                 Err(_) => return WalkState::Continue,
             };
             let absolute_path = entry.path().to_path_buf();
+            let cache = cache.clone();
 
             if let Some(file_name) = absolute_path.file_name().and_then(|n| n.to_str())
                 && file_name.ends_with(TEMPORAL_SUFFIX)
@@ -86,17 +104,39 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
                     is_dir,
                     content_hash: None,
                 };
+
                 let can_send = if metadata.is_dir() {
                     true
                 } else if metadata.is_file()
                     && (!config.performance.allow_size_limit || metadata.len() <= size_limit)
-                    && let Ok(hash) = process_file(&knot_file.path)
                 {
-                    knot_file.content_hash = Some(hash);
-                    true
+                    let path_cow = knot_file.path.to_string_lossy();
+                    let path_slice: &str = path_cow.as_ref();
+
+                    let cached_hash = if let Some(cache) = cache {
+                        if let Some(file) = cache.get(path_slice) {
+                            file.content_hash
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    if let Some(hash) = cached_hash {
+                        knot_file.content_hash = Some(hash);
+                        true
+                    } else if let Ok(hash) = process_file(&knot_file.path) {
+                        should_cache.store(true, Ordering::Relaxed);
+                        knot_file.content_hash = Some(hash);
+                        true
+                    } else {
+                        false
+                    }
                 } else {
                     false
                 };
+
                 if can_send && let Err(err) = tx.send(knot_file) {
                     eprintln!(
                         "Failed to send {:?} to mpsc channel due to {}",
@@ -109,6 +149,14 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
     });
     drop(tx);
     let final_results: Vec<KnotFile> = rx.into_iter().collect();
+    let should_cache = should_cache.load(Ordering::Relaxed);
+    if config.features.caching
+        && should_cache
+        && let Err(err) = save_cache(folder, &final_results)
+    {
+        warn!("Couldn't save cache: {err}");
+    }
+
     Ok(final_results)
 }
 
