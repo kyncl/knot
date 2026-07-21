@@ -113,12 +113,10 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
                     let path_cow = knot_file.path.to_string_lossy();
                     let path_slice: &str = path_cow.as_ref();
 
-                    let cached_hash = if let Some(cache) = cache {
-                        if let Some(file) = cache.get(path_slice) {
-                            file.content_hash
-                        } else {
-                            None
-                        }
+                    let cached_hash = if let Some(cache) = cache
+                        && let Some(file) = cache.get(path_slice)
+                    {
+                        file.content_hash
                     } else {
                         None
                     };
@@ -127,6 +125,7 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
                         knot_file.content_hash = Some(hash);
                         true
                     } else if let Ok(hash) = process_file(&knot_file.path) {
+                        // New hash, makes sense to store it in cache
                         should_cache.store(true, Ordering::Relaxed);
                         knot_file.content_hash = Some(hash);
                         true
