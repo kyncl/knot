@@ -47,17 +47,17 @@ pub async fn handle_files(cmd: FileSubcommand) -> Result<()> {
             file.sync_all()
                 .map_err(|e| anyhow!("Failed to sync file to disk: {}", e))?;
             drop(file);
-            if let Some(expected) = expected_size {
-                if bytes_copied != parse_size(&expected).unwrap_or(bytes_copied) {
-                    if let Some(temp_path) = &temporal_path {
-                        let _ = fs::remove_file(temp_path);
-                    }
-                    return Err(anyhow!(
-                        "Stream interrupted! Received {} bytes, expected {} bytes.",
-                        bytes_copied,
-                        expected
-                    ));
+            if let Some(expected) = expected_size
+                && bytes_copied != parse_size(&expected).unwrap_or(bytes_copied)
+            {
+                if let Some(temp_path) = &temporal_path {
+                    let _ = fs::remove_file(temp_path);
                 }
+                return Err(anyhow!(
+                    "Stream interrupted! Received {} bytes, expected {} bytes.",
+                    bytes_copied,
+                    expected
+                ));
             }
             if let Some(temp_path) = temporal_path {
                 fs::rename(temp_path, path)?;

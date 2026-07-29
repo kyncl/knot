@@ -22,7 +22,7 @@ pub async fn setup<P: AsRef<Path>>(
 ) -> Result<(Arc<MainConfig>, KnotManager)> {
     let (config_path, app_folder) = resolve_app_paths(config_path)?;
     let loaded_conf = ConfigurationLoader::load(config_path)?;
-    let patterns = loaded_conf.load_ignore_patterns(&app_folder.join("ignore"))?;
+    let patterns = loaded_conf.load_ignore_patterns(app_folder.join("ignore"))?;
     let source = Knot::from(loaded_conf.source).await?;
     let main_config = Arc::new(loaded_conf.config.ignorer(&source.path, &patterns)?);
 

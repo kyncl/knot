@@ -51,18 +51,19 @@ pub async fn handle_archiving(
                 chosen.knot.delete(target).await?;
             } else {
                 let files = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
-                let archived: Vec<KnotFile> = files
-                    .into_iter()
-                    .filter_map(|file| {
-                        if file.path.file_name().map_or(false, |name| {
-                            name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-                        }) {
-                            Some(file)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let archived: Vec<KnotFile> =
+                    files
+                        .into_iter()
+                        .filter_map(|file| {
+                            if file.path.file_name().is_some_and(|name| {
+                                name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
+                            }) {
+                                Some(file)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
                 let time_limit = older_than
                     .as_ref()
                     .map(|t| parse_human_time(t))
@@ -118,18 +119,19 @@ pub async fn handle_archiving(
                 }
             } else {
                 let files = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
-                let archived: Vec<PathBuf> = files
-                    .into_iter()
-                    .filter_map(|file| {
-                        if file.path.file_name().map_or(false, |name| {
-                            name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-                        }) {
-                            Some(file.path)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let archived: Vec<PathBuf> =
+                    files
+                        .into_iter()
+                        .filter_map(|file| {
+                            if file.path.file_name().is_some_and(|name| {
+                                name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
+                            }) {
+                                Some(file.path)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
                 chosen.knot.recover_files(archived, force).await?;
                 let should_transfer = inquire::Confirm::new(
                     "Do you want to try transfer these files into your source?",
@@ -175,9 +177,11 @@ pub async fn handle_archiving(
         let archived: Vec<PathBuf> = chosen_files
             .iter()
             .filter_map(|file| {
-                if file.path.file_name().map_or(false, |name| {
-                    name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-                }) {
+                if file
+                    .path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(ARCHIVE_PREFIX))
+                {
                     Some(PathBuf::from(relative_path(&file.path, root_path)))
                 } else {
                     None
@@ -257,9 +261,9 @@ pub async fn handle_archiving(
 fn resolve_index(index: Option<usize>, knots: &KnotManager) -> Result<usize> {
     if let Some(idx) = index {
         if knots.remotes.get(idx).is_some() {
-            return Ok(idx);
+            Ok(idx)
         } else {
-            return Err(anyhow!("Remote knot index {idx} is out of bounds"));
+            Err(anyhow!("Remote knot index {idx} is out of bounds"))
         }
     } else if !knots.remotes.is_empty() {
         if knots.remotes.len() == 1 {

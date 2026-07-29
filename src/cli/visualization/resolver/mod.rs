@@ -483,11 +483,9 @@ fn handle_input(
                 *focus_state = FocusState::Away;
                 *needs_redraw = true;
             }
-            Event::FocusGained => {
-                if *focus_state == FocusState::Away {
-                    *focus_state = FocusState::Returned;
-                    *needs_redraw = true;
-                }
+            Event::FocusGained if *focus_state == FocusState::Away => {
+                *focus_state = FocusState::Returned;
+                *needs_redraw = true;
             }
             _ => {}
         }

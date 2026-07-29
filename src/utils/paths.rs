@@ -61,7 +61,7 @@ pub fn relative_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, root: Q) -> String
 
     let rel = match path.strip_prefix(root) {
         Ok(p) => p,
-        Err(_) => &path,
+        Err(_) => path,
     };
     rel.components()
         .filter_map(|c| match c {

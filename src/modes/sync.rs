@@ -240,10 +240,10 @@ async fn execute_optimized_deletes(unique_files: &[KnotFile], target_knot: &Knot
     let mut last_dir_path: Option<&Path> = None;
 
     for file in targets {
-        if let Some(parent_path) = last_dir_path {
-            if file.path.starts_with(parent_path) {
-                continue;
-            }
+        if let Some(parent_path) = last_dir_path
+            && file.path.starts_with(parent_path)
+        {
+            continue;
         }
         if file.is_dir {
             last_dir_path = Some(&file.path);
@@ -290,10 +290,11 @@ where
                 dirs_to_create.insert(foreign_path);
             }
         } else {
-            if let Some(parent) = foreign_path.parent() {
-                if parent != to_root && parent.starts_with(to_root) {
-                    dirs_to_create.insert(parent.to_path_buf());
-                }
+            if let Some(parent) = foreign_path.parent()
+                && parent != to_root
+                && parent.starts_with(to_root)
+            {
+                dirs_to_create.insert(parent.to_path_buf());
             }
             if file.size >= SMALL_FILE_THRESHOLD {
                 large_files.push(file.clone());

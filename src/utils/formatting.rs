@@ -60,7 +60,7 @@ pub fn format_hash(hash: Option<u64>) -> String {
     match hash {
         Some(h) => {
             if h == 0 {
-                format!("ARCHIVE")
+                "ARCHIVE".to_string()
             } else {
                 format!("0x{:08x}", h as u32)
             }

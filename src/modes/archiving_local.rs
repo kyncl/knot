@@ -31,9 +31,11 @@ pub async fn handle_local_archiving(actions: ArchiveSubcommand) -> Result<()> {
             let archived: Vec<PathBuf> = files
                 .into_iter()
                 .filter_map(|file| {
-                    if file.path.file_name().map_or(false, |name| {
-                        name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-                    }) {
+                    if file
+                        .path
+                        .file_name()
+                        .is_some_and(|name| name.to_string_lossy().starts_with(ARCHIVE_PREFIX))
+                    {
                         Some(PathBuf::from(relative_path(file.path, &root_path)))
                     } else {
                         None
@@ -78,18 +80,19 @@ pub async fn handle_local_archiving(actions: ArchiveSubcommand) -> Result<()> {
 
                 let knot = Knot::new(KnotType::Local, root_path, None).await?;
                 let files = knot.crawl_dir(Arc::clone(&main_config)).await?;
-                let archived: Vec<PathBuf> = files
-                    .into_iter()
-                    .filter_map(|file| {
-                        if file.path.file_name().map_or(false, |name| {
-                            name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-                        }) {
-                            Some(file.path)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let archived: Vec<PathBuf> =
+                    files
+                        .into_iter()
+                        .filter_map(|file| {
+                            if file.path.file_name().is_some_and(|name| {
+                                name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
+                            }) {
+                                Some(file.path)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
                 handle_recovery_remove(&archived, &actions).await?;
             } else if !target.is_empty() {
                 let mut resolved_targets = Vec::new();
@@ -98,7 +101,7 @@ pub async fn handle_local_archiving(actions: ArchiveSubcommand) -> Result<()> {
                         let knot = Knot::new(KnotType::Local, t, None).await?;
                         let files = knot.crawl_dir(Arc::clone(&main_config)).await?;
                         for file in files {
-                            if file.path.file_name().map_or(false, |name| {
+                            if file.path.file_name().is_some_and(|name| {
                                 name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
                             }) {
                                 resolved_targets.push(file.path);
@@ -124,9 +127,11 @@ pub fn list_archive(files: Vec<KnotFile>, format: StructFormat, compress: bool) 
     let archived: Vec<KnotFile> = files
         .into_iter()
         .filter_map(|file| {
-            if file.path.file_name().map_or(false, |name| {
-                name.to_string_lossy().starts_with(ARCHIVE_PREFIX)
-            }) {
+            if file
+                .path
+                .file_name()
+                .is_some_and(|name| name.to_string_lossy().starts_with(ARCHIVE_PREFIX))
+            {
                 Some(file)
             } else {
                 None
@@ -176,7 +181,7 @@ pub async fn archive_files(files: Vec<PathBuf>, dirs: Vec<PathBuf>) -> Result<()
                 let archive_path = parent.join(archive_name);
 
                 let tar_file = File::create(&archive_path)?;
-                let mut mode_file = File::open(&file)?;
+                let mut mode_file = File::open(file)?;
                 let metadata = mode_file.metadata()?;
 
                 let zstd_encoder = zstd::stream::Encoder::new(tar_file, 0)?;
@@ -197,7 +202,7 @@ pub async fn archive_files(files: Vec<PathBuf>, dirs: Vec<PathBuf>) -> Result<()
                 let zstd_encoder = builder.into_inner()?;
                 zstd_encoder.finish()?;
 
-                std::fs::remove_file(&file)?;
+                std::fs::remove_file(file)?;
             }
             Ok(())
         })
@@ -218,11 +223,11 @@ pub async fn archive_files(files: Vec<PathBuf>, dirs: Vec<PathBuf>) -> Result<()
                 let tar_file = File::create(&archive_path)?;
                 let zstd_encoder = zstd::stream::Encoder::new(tar_file, 0)?;
                 let mut builder = Builder::new(zstd_encoder);
-                builder.append_dir_all(name, &dir)?;
+                builder.append_dir_all(name, dir)?;
                 builder.finish()?;
                 let zstd_encoder = builder.into_inner()?;
                 zstd_encoder.finish()?;
-                std::fs::remove_dir_all(&dir)?;
+                std::fs::remove_dir_all(dir)?;
             }
             Ok(())
         })
@@ -281,7 +286,7 @@ async fn handle_remove(target: &Path, older_than: Option<&str>) -> Result<()> {
 
 pub async fn handle_recover(target: &Path, force: bool) -> Result<()> {
     let target = target.to_path_buf();
-    let is_zstd = target.extension().map_or(false, |ext| ext == "zst");
+    let is_zstd = target.extension().is_some_and(|ext| ext == "zst");
 
     tokio::task::spawn_blocking(move || -> Result<()> {
         {

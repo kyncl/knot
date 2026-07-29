@@ -68,9 +68,9 @@ impl ConfigurationLoader {
             r#"# {APP_FOLDER} contains cache and data that could be evaluated as private information.
 # It is not recommended to transfer the folder"#
         );
-        let git_explanation = format!(
+        let git_explanation =
             "# .git folder is quite chunky and most of the time it's not wanted to be transferred"
-        );
+                .to_string();
         // Ignoring by default the APP_FOLDER as an safety measure and .git, because it's usually
         // really chunky folder
         let data = format!("{explanation}\n{APP_FOLDER}/\n{git_explanation}\n.git/\n{data}");
@@ -80,7 +80,6 @@ impl ConfigurationLoader {
     pub fn load_ignore_patterns<P: AsRef<Path>>(&self, path: P) -> Result<Vec<String>> {
         let data: Vec<String> = fs::read_to_string(path)?
             .lines()
-            .into_iter()
             .filter_map(|line| {
                 if !line.starts_with("#") {
                     Some(line.to_string())

@@ -96,10 +96,10 @@ pub async fn stream_batch_ssh(
         }
         header.set_size(file_size);
         header.set_mode(file_mode);
-        if let Ok(modified) = metadata.modified() {
-            if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
-                header.set_mtime(duration.as_secs());
-            }
+        if let Ok(modified) = metadata.modified()
+            && let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH)
+        {
+            header.set_mtime(duration.as_secs());
         }
         header.set_cksum();
 

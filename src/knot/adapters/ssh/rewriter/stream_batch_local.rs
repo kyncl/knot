@@ -87,10 +87,10 @@ pub async fn stream_batch_local(
     while let Some(msg) = channel.wait().await {
         match msg {
             russh::ChannelMsg::Data { data } => {
-                if let Some(sender) = tx_sender.as_ref() {
-                    if sender.send(data.to_vec()).await.is_err() {
-                        break;
-                    }
+                if let Some(sender) = tx_sender.as_ref()
+                    && sender.send(data.to_vec()).await.is_err()
+                {
+                    break;
                 }
             }
             russh::ChannelMsg::ExtendedData { ext: 1, data } => {
