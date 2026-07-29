@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use strum::Display;
+
+use crate::cli::subcommands::{archiving::ArchiveSubcommand, file_system::FileSubcommand};
 pub mod autocomplete;
+pub mod subcommands;
 pub mod visualization;
 
 #[derive(Parser, Debug)]
@@ -18,38 +21,65 @@ pub struct KnotArgs {
 
 #[derive(Debug, Subcommand, PartialEq, Clone, Display)]
 pub enum ModeArgs {
-    /// Will do the main thing
-    Sync,
+    /// Synchronize directory trees across configured knots
+    Sync {
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
 
-    /// Crawling though an path and returning structure of this dir
+    /// Manage local archive files
+    ArchiveLocal {
+        #[command(subcommand)]
+        actions: ArchiveSubcommand,
+    },
+
+    /// Transfer and manage archives between knots
+    Archive {
+        #[command(subcommand)]
+        actions: Option<ArchiveSubcommand>,
+
+        /// Target index when multiple remote knots exist (prompts interactively if omitted)
+        #[arg(short = 'i', long)]
+        index: Option<usize>,
+
+        /// Path to the configuration file or project workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
+
+    /// Scan a directory and inspect its file structure
     Crawl {
-        /// Crawl through this directory
+        /// Target directory path to crawl
         #[arg(short = 'p', long, default_value = "./")]
         crawl_path: PathBuf,
 
+        /// Compress the scanned structure output
         #[arg(long)]
         compress: bool,
 
+        /// Output serialization format for the structure
         #[arg(long, default_value = "binary")]
         format: StructFormat,
 
-        /// Limit files to be crawled based on their size
-        /// Bigger files than this option will be skipped
+        /// Skip files exceeding this size limit (e.g., "500MB", "2GB")
         #[arg(short = 's', long)]
         size: Option<String>,
 
-        /// Will use gitignore file to ignore files
+        /// Respect `.gitignore` rules when scanning files
         #[arg(short = 'g', long)]
         gitignore: bool,
 
-        /// Allow caching
+        /// Cache results to speed up repeated crawls
         #[arg(short = 'c', long)]
         caching: bool,
 
+        /// Additional file or directory patterns to ignore
         #[arg(long)]
         ignore_patterns: Option<Vec<String>>,
     },
-    /// Directly perform file operations utilizing the Knot local adapter
+
+    /// Execute low-level file operations directly
     File {
         #[command(subcommand)]
         cmd: FileSubcommand,
@@ -58,100 +88,8 @@ pub enum ModeArgs {
 
 #[derive(Debug, PartialEq, Clone, ValueEnum)]
 pub enum StructFormat {
-    /// JavaScript Object Notation
+    /// JavaScript Object Notation (JSON) format
     Json,
-    /// Binary format
+    /// Binary format encoded in Base64
     Binary,
-}
-
-#[derive(Debug, Subcommand, PartialEq, Clone)]
-pub enum FileSubcommand {
-    /// Write raw bytes to a file, optionally at a specific offset (without wiping it)
-    Write {
-        /// The file path to write to
-        path: PathBuf,
-        /// Data to write, encoded as a Base64 string
-        #[arg(long, value_name = "BASE64")]
-        data: String,
-        /// Seek offset to begin writing at
-        #[arg(short, long, default_value_t = 0)]
-        offset: u64,
-    },
-    /// Write raw bytes directly from stdin to a file
-    WriteStream {
-        /// Into this file knot will upload the data and than transfer it into path
-        #[arg(long)]
-        temporal_path: Option<PathBuf>,
-        /// The file path to write to
-        path: PathBuf,
-    },
-    ReadStream {
-        /// The file path to read
-        path: PathBuf,
-    },
-    /// Empty a file and write the specified bytes to it
-    EmptyWrite {
-        /// The file path to overwrite
-        path: PathBuf,
-        /// Data to write, encoded as a Base64 string
-        #[arg(long, value_name = "BASE64")]
-        data: String,
-    },
-
-    /// Read a specific range/interval of bytes from a file
-    ReadInterval {
-        /// The file path to read
-        path: PathBuf,
-        /// The starting byte position (inclusive)
-        #[arg(short, long)]
-        start: u64,
-        /// The ending byte position (exclusive)
-        #[arg(short, long)]
-        end: u64,
-    },
-
-    /// Read the entire contents of a file (dangerous for large files)
-    ReadFull {
-        /// The file path to read
-        path: PathBuf,
-    },
-
-    /// Truncate an existing file to 0 bytes, or create it empty
-    Empty {
-        /// The file path to empty
-        path: PathBuf,
-    },
-
-    /// Move or rename a file to a new path
-    Rename {
-        /// Existing file path
-        old_path: PathBuf,
-        /// Target destination path
-        new_path: PathBuf,
-    },
-
-    /// Delete a file permanently
-    Delete {
-        /// File path to delete
-        path: PathBuf,
-    },
-
-    /// Create an empty file
-    Create {
-        /// File path to create
-        path: PathBuf,
-    },
-
-    /// Create an directory
-    CreateDir {
-        /// Directory path to create
-        path: PathBuf,
-    },
-
-    /// Create MULTIPLE directories
-    CreateDirs {
-        /// Directory path to create
-        #[arg(long = "path")]
-        path: Vec<PathBuf>,
-    },
 }

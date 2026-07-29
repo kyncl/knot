@@ -8,11 +8,11 @@ use std::{
         mpsc,
     },
     thread,
-    time::SystemTime,
+    time::{Instant, SystemTime},
 };
 
 use crate::{
-    BUFFER_SIZE, TEMPORAL_SUFFIX,
+    ARCHIVE_PREFIX, BUFFER_SIZE, TEMPORAL_SUFFIX,
     configuration::MainConfig,
     ignorer::normalize_pattern,
     knot::file::{KnotFile, load_cache, save_cache},
@@ -23,12 +23,16 @@ use tracing::{debug, warn};
 use xxhash_rust::xxh3::Xxh3;
 
 pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<KnotFile>> {
+    let crawler_time = Instant::now();
     let (tx, rx) = mpsc::channel();
     let size_limit = config.performance.size_limit;
     let count = thread::available_parallelism()?.get();
 
     let cache = if config.features.caching {
-        load_cache(folder)
+        let now = Instant::now();
+        let cache = load_cache(folder);
+        debug!("Cache was loaded in {:.2?}", now.elapsed());
+        cache
     } else {
         None
     }
@@ -81,8 +85,16 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
             if let Some(file_name) = absolute_path.file_name().and_then(|n| n.to_str())
                 && file_name.ends_with(TEMPORAL_SUFFIX)
             {
-                if let Err(err) = std::fs::remove_file(&absolute_path) {
+                if let Ok(metadata) = std::fs::metadata(&absolute_path)
+                    && !metadata.is_dir()
+                    && let Err(err) = std::fs::remove_file(&absolute_path)
+                {
                     debug!("Couldn't remove temporal file due to: {err}");
+                } else if let Ok(metadata) = std::fs::metadata(&absolute_path)
+                    && metadata.is_dir()
+                    && let Err(err) = std::fs::remove_dir_all(&absolute_path)
+                {
+                    debug!("Couldn't remove temporal dir due to: {err}");
                 } else {
                     debug!("Successfully removed {absolute_path:?}");
                 }
@@ -91,6 +103,7 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
 
             if let Ok(metadata) = entry.metadata() {
                 let is_dir = metadata.is_dir();
+                let size = metadata.len();
                 let mtime = metadata
                     .modified()
                     .unwrap_or(SystemTime::UNIX_EPOCH)
@@ -101,28 +114,40 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
                 let mut knot_file = KnotFile {
                     path: absolute_path,
                     mtime,
+                    size,
                     is_dir,
                     content_hash: None,
                 };
+                let is_archive = entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(ARCHIVE_PREFIX);
 
                 let can_send = if metadata.is_dir() {
                     true
                 } else if metadata.is_file()
-                    && (!config.performance.allow_size_limit || metadata.len() <= size_limit)
+                    && (!config.performance.allow_size_limit || knot_file.size <= size_limit)
                 {
                     let path_cow = knot_file.path.to_string_lossy();
                     let path_slice: &str = path_cow.as_ref();
 
                     let cached_hash = if let Some(cache) = cache
-                        && let Some(file) = cache.get(path_slice)
+                        && let Some(cached_file) = cache.get(path_slice)
+                        && cached_file.mtime == knot_file.mtime
                     {
-                        file.content_hash
+                        cached_file.content_hash
                     } else {
                         None
                     };
 
                     if let Some(hash) = cached_hash {
                         knot_file.content_hash = Some(hash);
+                        true
+                    } else if is_archive {
+                        // Doesn't make sense to get hash of archived file
+                        // It shouldn't be compared with other files
+                        // Adding Some(0) so that the TUI can say "Hey, it's file"
+                        knot_file.content_hash = Some(0);
                         true
                     } else if let Ok(hash) = process_file(&knot_file.path) {
                         // New hash, makes sense to store it in cache
@@ -149,13 +174,15 @@ pub fn local_file_crawler(folder: &Path, config: Arc<MainConfig>) -> Result<Vec<
     drop(tx);
     let final_results: Vec<KnotFile> = rx.into_iter().collect();
     let should_cache = should_cache.load(Ordering::Relaxed);
+    let now = Instant::now();
     if config.features.caching
         && should_cache
         && let Err(err) = save_cache(folder, &final_results)
     {
         warn!("Couldn't save cache: {err}");
     }
-
+    debug!("Cache was saved in {:.2?}", now.elapsed());
+    debug!("Crawling took {:.2?}", crawler_time.elapsed());
     Ok(final_results)
 }
 

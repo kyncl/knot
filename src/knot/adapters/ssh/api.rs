@@ -2,6 +2,7 @@ use crate::{BUFFER_SIZE_TRANSFER, connection::ssh::pool::SSHPool};
 use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::{path::Path, sync::Arc};
+use tracing::debug;
 
 pub async fn test(pool: Arc<SSHPool>) -> Result<()> {
     let session = pool.try_get_session(3).await?;
@@ -37,17 +38,17 @@ pub async fn upload_and_prepare_server(
     let session = pool.try_get_session(3).await?;
 
     let remote_path = String::from("~/.local/bin/knot");
-    println!("Creating remote directory...");
+    debug!("Creating remote directory...");
     let mut channel = session.session.channel_open_session().await?;
     channel
         .exec(true, "mkdir -p ~/.local/bin".to_string())
         .await?;
     while channel.wait().await.is_some() {}
 
-    println!("Encoding binary to Base64...");
+    debug!("Encoding binary to Base64...");
     let b64_encoded = STANDARD.encode(local_binary_bytes);
 
-    println!("Uploading binary via Base64 stream...");
+    debug!("Uploading binary via Base64 stream...");
     let mut upload_channel = session.session.channel_open_session().await?;
 
     let cmd = format!("base64 -d > {}", remote_path);
@@ -58,13 +59,13 @@ pub async fn upload_and_prepare_server(
     }
     upload_channel.eof().await?;
     while upload_channel.wait().await.is_some() {}
-    println!("Upload complete.");
-    println!("Setting executable permissions...");
+    debug!("Upload complete.");
+    debug!("Setting executable permissions...");
     let mut chmod_channel = session.session.channel_open_session().await?;
     chmod_channel
         .exec(true, format!("chmod +x {}", remote_path))
         .await?;
     while chmod_channel.wait().await.is_some() {}
-    println!("Remote server binary is ready to run!");
+    debug!("Remote server binary is ready to run!");
     Ok(())
 }

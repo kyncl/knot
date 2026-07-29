@@ -64,6 +64,7 @@ serde_json = "1"
 toml = "1.1.2"
 toml_edit = "0.25.12"
 zstd = "0.13.3"
+tar = "0.4.46"
 
 # --- Data Types & Utilities ---
 chrono = "0.4.45"

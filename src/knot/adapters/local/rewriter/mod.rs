@@ -3,6 +3,7 @@ use anyhow::Result;
 use std::path::Path;
 use tokio::io::AsyncReadExt;
 
+pub mod stream_batch_ssh;
 pub mod to_ssh;
 
 pub async fn classic_rewrite(

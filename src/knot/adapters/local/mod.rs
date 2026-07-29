@@ -13,6 +13,7 @@ use crate::{
         file::KnotFile,
         resources::KnotResourcers,
     },
+    modes::archiving_local::{archive_files, handle_recover},
     utils::paths::temporal_file,
 };
 use anyhow::{Result, anyhow};
@@ -88,7 +89,7 @@ impl KnotAdapter for LocalAdapter {
             let mut err = format!(
                 "Failed to rewrite foreign knot due to: {err}. Trying to delete temporal file..."
             );
-            let possible_err = foreign_knot.delete(&temporal_file).await;
+            let possible_err = foreign_knot.delete(vec![temporal_file]).await;
             if let Err(delete_err) = possible_err {
                 err.push_str(&format!(
                     "\nClean up of temporal file failed due to: {delete_err}"
@@ -159,7 +160,7 @@ impl KnotAdapter for LocalAdapter {
             return Ok(());
         }
         let mut targets = dirs;
-        targets.sort();
+        targets.sort_by_key(|d| std::cmp::Reverse(d.components().count()));
         let mut optimized_dirs: Vec<PathBuf> = Vec::with_capacity(targets.len());
         for dir in targets.into_iter().rev() {
             if let Some(last_added) = optimized_dirs.last()
@@ -177,12 +178,15 @@ impl KnotAdapter for LocalAdapter {
         Ok(())
     }
 
-    async fn delete(&self, _resources: Arc<KnotResourcers>, path: &Path) -> Result<()> {
-        if let Err(err) = tokio::fs::remove_file(&path).await {
-            if err.kind() == std::io::ErrorKind::IsADirectory || err.raw_os_error() == Some(21) {
-                tokio::fs::remove_dir_all(path).await?;
-            } else if err.kind() != std::io::ErrorKind::NotFound {
-                return Err(anyhow::Error::from(err));
+    async fn delete(&self, _resources: Arc<KnotResourcers>, paths: Vec<PathBuf>) -> Result<()> {
+        for path in paths {
+            if let Err(err) = tokio::fs::remove_file(&path).await {
+                if err.kind() == std::io::ErrorKind::IsADirectory || err.raw_os_error() == Some(21)
+                {
+                    tokio::fs::remove_dir_all(path).await?;
+                } else if err.kind() != std::io::ErrorKind::NotFound {
+                    return Err(anyhow::Error::from(err));
+                }
             }
         }
         Ok(())
@@ -251,5 +255,26 @@ impl KnotAdapter for LocalAdapter {
     async fn read_all(&self, _resources: Arc<KnotResourcers>, path: &Path) -> Result<Vec<u8>> {
         let bytes = tokio::fs::read(path).await?;
         Ok(bytes)
+    }
+
+    async fn archive_files(
+        &self,
+        _resources: Arc<KnotResourcers>,
+        files: Vec<PathBuf>,
+        dirs: Vec<PathBuf>,
+    ) -> Result<()> {
+        archive_files(files, dirs).await
+    }
+
+    async fn recover_files(
+        &self,
+        _resources: Arc<KnotResourcers>,
+        paths: Vec<PathBuf>,
+        force: bool,
+    ) -> Result<()> {
+        for path in paths {
+            handle_recover(&path, force).await?;
+        }
+        Ok(())
     }
 }

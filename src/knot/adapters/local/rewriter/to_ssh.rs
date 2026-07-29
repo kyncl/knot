@@ -25,15 +25,18 @@ pub async fn stream_rewrite_ssh(
             "./.local/bin/knot"
         }
     };
+    let mut local_file = tokio::fs::File::open(path).await?;
+    let file_size = local_file.metadata().await?.len();
+
+    let safe_foreign = foreign_path.display().to_string().replace('\'', "'\\''");
+    let safe_temporal = temporal_file.display().to_string().replace('\'', "'\\''");
+
     let cmd = format!(
-        "{bin} file write-stream '{}' --temporal-path '{}'",
-        foreign_path.display(),
-        temporal_file.display()
+        "{bin} file write-stream '{safe_foreign}' --temporal-path '{safe_temporal}' --expected-size {file_size}"
     );
     let mut channel = session.session.channel_open_session().await?;
     channel.exec(true, cmd.as_bytes()).await?;
 
-    let mut local_file = tokio::fs::File::open(path).await?;
     let mut buffer = vec![0; BUFFER_SIZE_TRANSFER];
 
     loop {

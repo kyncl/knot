@@ -1,7 +1,12 @@
 use ignore::gitignore::Gitignore;
+use serde::Serialize;
 
+#[derive(Serialize, Debug)]
 pub struct GlobalConfig {
+    #[serde(skip)]
     pub ignorer: Gitignore,
+    // Will be replaced with custom ignore file
+    #[serde(skip)]
     pub ignore_patterns: Vec<String>,
 }
 impl Default for GlobalConfig {

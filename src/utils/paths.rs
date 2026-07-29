@@ -54,3 +54,21 @@ pub fn temporal_file<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
     );
     Ok(parent.join(temp_name))
 }
+
+pub fn relative_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, root: Q) -> String {
+    let root = root.as_ref();
+    let path = path.as_ref();
+
+    let rel = match path.strip_prefix(root) {
+        Ok(p) => p,
+        Err(_) => &path,
+    };
+    rel.components()
+        .filter_map(|c| match c {
+            std::path::Component::Normal(s) => s.to_str(),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+        .replace("\\", "/")
+}

@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Behavior {
     pub uniques: UniqueBehavior,
     pub conflicts: ConflictBehavior,
@@ -12,7 +13,7 @@ impl Behavior {
 }
 
 /// If Knot finds unique files, this will determinant how to handle it
-#[derive(Default, Debug, Display)]
+#[derive(Default, Debug, Display, Serialize, Deserialize)]
 pub enum UniqueBehavior {
     #[default]
     Archive,
@@ -29,7 +30,7 @@ pub enum UniqueBehavior {
 }
 
 /// If content of files differs, this will determinant how to handle it
-#[derive(Default, Debug, Display)]
+#[derive(Default, Debug, Display, Serialize, Deserialize)]
 pub enum ConflictBehavior {
     /// If you want to always prioritize newer based on modified time
     #[default]

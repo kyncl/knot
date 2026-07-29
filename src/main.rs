@@ -1,19 +1,17 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
-use inquire::{Password, Text};
 use knot::{
-    APP_FOLDER,
-    cli::{KnotArgs, ModeArgs, autocomplete::path::FilePathCompleter},
+    cli::{KnotArgs, ModeArgs},
     configuration::MainConfig,
-    knot::{
-        Knot, KnotType, adapters::ssh::api::upload_and_prepare_server,
-        credentials::KnotCredentials, manager::KnotManager,
+    knot::manager::KnotManager,
+    modes::{
+        archiving::handle_archiving, archiving_local::handle_local_archiving, crawl::crawl,
+        file::handle_files, setup::setup,
     },
-    modes::{crawl::crawl, file::handle_files},
-    utils::behavior::Behavior,
 };
 use parse_size::parse_size;
-use std::{fs, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
+use tracing::debug;
 use tracing_appender::non_blocking;
 use tracing_subscriber::EnvFilter;
 
@@ -27,54 +25,19 @@ async fn main() -> Result<()> {
     let user_args = KnotArgs::parse();
 
     match user_args.mode {
-        ModeArgs::Sync => {
-            let path = Text::new("Path to folder for checking")
-                .with_autocomplete(FilePathCompleter::default())
-                .prompt()?;
-            let main_config = Arc::new(
-                MainConfig::new()
-                    .caching(true)
-                    .gitignore(true)
-                    .task_limit(10_000)
-                    .file_size_limit(parse_size("15GB")?)
-                    .ignorer(&path, &["node_modules/", APP_FOLDER])?,
-            );
-            let source = Knot::new(&KnotType::Local, &path, None).await?;
-            let mut knots = KnotManager::new(source);
-
-            let path = Text::new("Path to folder for checking in SSH")
-                .with_help_message(
-                    "Please write absolute path to rule out any potential misinterpretation.\nOnly possible one is '~' for Linux systems",
-                )
-                .prompt()?;
-            let remote = Knot::new(
-                &KnotType::SSH,
-                &path,
-                Some(
-                    KnotCredentials::new()
-                        .host("localhost")
-                        .port(2222)
-                        .username("root")
-                        .auth_password(Password::new("Auth for localhost").prompt()?)
-                        .limit(100),
-                ),
-            )
-            .await?;
-            {
-                let pool = remote.resources.ssh.clone().unwrap();
-                upload_and_prepare_server(pool, &fs::read("./target/release/knot")?).await?;
-            }
-            knots.add_remote(remote, Behavior::default());
+        ModeArgs::Sync { config_path } => {
+            let (main_config, mut knots) = setup(config_path).await?;
 
             let start_time = Instant::now();
-            let source_fut = knots.source.set_folder(main_config.clone());
-            let remotes_fut = KnotManager::update_remotes(&mut knots.remotes, main_config);
+            let source_fut = knots.source.set_folder(Arc::clone(&main_config));
+            let remotes_fut =
+                KnotManager::update_remotes(&mut knots.remotes, Arc::clone(&main_config));
             tokio::try_join!(source_fut, remotes_fut)?;
-            println!("Update took: {:0.2?}", start_time.elapsed());
+            debug!("Update took: {:0.2?}", start_time.elapsed());
 
             for remote in &knots.remotes {
                 let source = &knots.source;
-                source.sync(remote).await?;
+                source.sync(remote, Arc::clone(&main_config)).await?;
             }
         }
         ModeArgs::Crawl {
@@ -106,6 +69,12 @@ async fn main() -> Result<()> {
             crawl(format, compress, crawl_path, config).await?;
         }
         ModeArgs::File { cmd } => handle_files(cmd).await?,
+        ModeArgs::ArchiveLocal { actions } => handle_local_archiving(actions).await?,
+        ModeArgs::Archive {
+            actions,
+            index,
+            config_path,
+        } => handle_archiving(actions, index, config_path).await?,
     };
     Ok(())
 }

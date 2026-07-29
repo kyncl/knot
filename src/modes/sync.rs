@@ -1,19 +1,21 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use colored::Colorize;
 use futures::{
     TryStreamExt,
     stream::{self, StreamExt},
 };
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
-    time::Duration,
+    sync::Arc,
+    time::{Duration, Instant},
 };
 use tracing::debug;
 
 use crate::{
-    ARCHIVE_PREFIX, STABLE_CHANNELS_PER_SESSION,
+    STABLE_CHANNELS_PER_SESSION,
+    configuration::MainConfig,
     knot::{Knot, file::KnotFile, file_diffs::FileDiffs, manager::RemoteKnot},
     utils::behavior::{ConflictBehavior, UniqueBehavior},
 };
@@ -35,15 +37,26 @@ pub fn get_dynamic_io_limit_single(knot: &Knot) -> usize {
     }
 }
 
-pub async fn sync(source: &Knot, remote: &RemoteKnot) -> Result<()> {
+pub async fn sync(source: &Knot, remote: &RemoteKnot, config: Arc<MainConfig>) -> Result<()> {
     let remote_k = &remote.knot;
     let diff = source.difference(&remote.knot);
+    if diff.source_unique.is_empty()
+        && diff.remote_unique.is_empty()
+        && diff.conflicts.is_empty()
+        && diff.archived.is_empty()
+    {
+        println!("Directories are synchronized!");
+        return Ok(());
+    }
     diff.visualization();
     let behavior = &remote.behavior;
+    let compress = config.features.compress;
+    let now = Instant::now();
     tokio::try_join!(
         handle_conflicts(source, remote_k, &diff.conflicts, &behavior.conflicts),
-        handle_uniques(source, remote_k, &diff, &behavior.uniques)
+        handle_uniques(source, remote_k, &diff, &behavior.uniques, compress)
     )?;
+    debug!("Synchronization took {:.2?}", now.elapsed());
     Ok(())
 }
 
@@ -53,50 +66,72 @@ async fn handle_conflicts(
     files: &[(KnotFile, KnotFile)],
     conflicts: &ConflictBehavior,
 ) -> Result<()> {
+    let file_conflicts: Vec<&(KnotFile, KnotFile)> = files
+        .iter()
+        .filter(|(s, r)| !s.is_dir && !r.is_dir)
+        .collect();
+    if file_conflicts.is_empty() {
+        return Ok(());
+    }
+    let limit = get_dynamic_io_limit(source, remote);
     match conflicts {
-        ConflictBehavior::Ask => {}
+        ConflictBehavior::Ask => {
+            todo!("Interactive prompt logic");
+        }
         ConflictBehavior::Skip => {
             debug!("Skipping all conflicts...");
         }
-        ConflictBehavior::Newer
-        | ConflictBehavior::Older
-        | ConflictBehavior::Source
-        | ConflictBehavior::Remote => {
-            stream::iter(files)
-                .filter(|(s, r)| futures::future::ready(!s.is_dir && !r.is_dir))
-                .map(|(s_file, r_file)| async move {
-                    let s_path = &s_file.path;
-                    let r_path = &r_file.path;
-
-                    match conflicts {
-                        ConflictBehavior::Newer => {
-                            if s_file.mtime > r_file.mtime {
-                                source.transfer_to(remote, s_path, r_path).await
-                            } else {
-                                remote.transfer_to(source, r_path, s_path).await
-                            }
-                        }
-                        ConflictBehavior::Older => {
-                            if s_file.mtime < r_file.mtime {
-                                source.transfer_to(remote, s_path, r_path).await
-                            } else {
-                                remote.transfer_to(source, r_path, s_path).await
-                            }
-                        }
-                        ConflictBehavior::Source => {
-                            source.transfer_to(remote, s_path, r_path).await
-                        }
-                        ConflictBehavior::Remote => {
-                            remote.transfer_to(source, r_path, s_path).await
-                        }
-                        _ => Ok(()),
+        ConflictBehavior::Newer => {
+            stream::iter(file_conflicts)
+                .filter_map(|(s, r)| async move {
+                    if s.mtime > r.mtime {
+                        Some((source, remote, &s.path, &r.path))
+                    } else if r.mtime > s.mtime {
+                        Some((remote, source, &r.path, &s.path))
+                    } else {
+                        None
                     }
                 })
-                .buffer_unordered(get_dynamic_io_limit(source, remote))
+                .map(|(from, to, src_path, dst_path)| async move {
+                    from.transfer_to(to, src_path, dst_path).await
+                })
+                .buffer_unordered(limit)
                 .try_collect::<Vec<()>>()
                 .await?;
         }
-    };
+        ConflictBehavior::Older => {
+            stream::iter(file_conflicts)
+                .filter_map(|(s, r)| async move {
+                    if s.mtime < r.mtime {
+                        Some((source, remote, &s.path, &r.path))
+                    } else if r.mtime < s.mtime {
+                        Some((remote, source, &r.path, &s.path))
+                    } else {
+                        None
+                    }
+                })
+                .map(|(from, to, src_path, dst_path)| async move {
+                    from.transfer_to(to, src_path, dst_path).await
+                })
+                .buffer_unordered(limit)
+                .try_collect::<Vec<()>>()
+                .await?;
+        }
+        ConflictBehavior::Source => {
+            stream::iter(file_conflicts)
+                .map(|(s, r)| async move { source.transfer_to(remote, &s.path, &r.path).await })
+                .buffer_unordered(limit)
+                .try_collect::<Vec<()>>()
+                .await?;
+        }
+        ConflictBehavior::Remote => {
+            stream::iter(file_conflicts)
+                .map(|(s, r)| async move { remote.transfer_to(source, &r.path, &s.path).await })
+                .buffer_unordered(limit)
+                .try_collect::<Vec<()>>()
+                .await?;
+        }
+    }
 
     Ok(())
 }
@@ -106,6 +141,7 @@ async fn handle_uniques(
     remote: &Knot,
     diffs: &FileDiffs,
     uniques: &UniqueBehavior,
+    compress: bool,
 ) -> Result<()> {
     match uniques {
         UniqueBehavior::Ask => {}
@@ -113,33 +149,37 @@ async fn handle_uniques(
             debug!("Skipping all unique files...");
         }
         UniqueBehavior::Archive => {
+            let now = Instant::now();
             add_unique_files(
                 &diffs.source_unique,
                 &diffs.source_root_path,
                 &diffs.remote_root_path,
                 source,
                 remote,
+                compress,
             )
             .await?;
+            debug!(
+                "Adding {} unique files to remote {:?} took {:.2?}",
+                diffs.source_unique.len(),
+                remote.knot_type(),
+                now.elapsed()
+            );
 
             let mut to_archive = diffs.remote_unique.clone();
             to_archive.sort_by_key(|f| std::cmp::Reverse(f.path.components().count()));
-
-            stream::iter(to_archive)
-                .map(|unique| async move {
-                    let parent = unique
-                        .path
-                        .parent()
-                        .ok_or_else(|| anyhow!("Couldn't get parent of {}", unique.path.display()))?
-                        .to_path_buf();
-                    let name = format!("{ARCHIVE_PREFIX}{}", unique.name()?);
-                    remote.rename(&unique.path, &parent.join(name)).await
-                })
-                .buffer_unordered(get_dynamic_io_limit(source, remote))
-                .collect::<Vec<Result<()>>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?;
+            let (archive_files, archive_dirs): (Vec<_>, Vec<_>) =
+                to_archive.into_iter().partition(|file| !file.is_dir);
+            let archive_files: Vec<PathBuf> = archive_files.into_iter().map(|f| f.path).collect();
+            let archive_dirs: Vec<PathBuf> = archive_dirs.into_iter().map(|f| f.path).collect();
+            let af_len = archive_files.len();
+            let ad_len = archive_dirs.len();
+            let now = Instant::now();
+            remote.archive_files(archive_files, archive_dirs).await?;
+            debug!(
+                "Archiving {af_len} files and {ad_len} dirs took {:.2?}",
+                now.elapsed()
+            )
         }
         UniqueBehavior::OnlyAdd => {
             tokio::try_join!(
@@ -148,14 +188,16 @@ async fn handle_uniques(
                     &diffs.source_root_path,
                     &diffs.remote_root_path,
                     source,
-                    remote
+                    remote,
+                    compress,
                 ),
                 add_unique_files(
                     &diffs.remote_unique,
                     &diffs.remote_root_path,
                     &diffs.source_root_path,
                     remote,
-                    source
+                    source,
+                    compress,
                 )
             )?;
         }
@@ -167,6 +209,7 @@ async fn handle_uniques(
                 &diffs.remote_root_path,
                 source,
                 remote,
+                compress,
             )
             .await?;
         }
@@ -178,6 +221,7 @@ async fn handle_uniques(
                 &diffs.source_root_path,
                 remote,
                 source,
+                compress,
             )
             .await?;
         }
@@ -189,85 +233,153 @@ async fn handle_uniques(
 /// If a parent directory is marked for deletion, it drops all internal files
 /// from the pipeline since wiping the directory kills them all at once
 async fn execute_optimized_deletes(unique_files: &[KnotFile], target_knot: &Knot) -> Result<()> {
-    let mut targets = unique_files.to_vec();
+    let mut targets: Vec<&KnotFile> = unique_files.iter().collect();
     // Lexicographical sort guarantees parents come before children
     targets.sort_by(|a, b| a.path.cmp(&b.path));
-    let mut optimized_deletes: Vec<KnotFile> = Vec::with_capacity(targets.len());
-    let mut last_dir_path: Option<PathBuf> = None;
+    let mut optimized_deletes: Vec<PathBuf> = Vec::with_capacity(targets.len());
+    let mut last_dir_path: Option<&Path> = None;
 
     for file in targets {
-        if let Some(ref parent_path) = last_dir_path
-            && file.path.starts_with(parent_path)
-        {
-            continue;
+        if let Some(parent_path) = last_dir_path {
+            if file.path.starts_with(parent_path) {
+                continue;
+            }
         }
         if file.is_dir {
-            last_dir_path = Some(file.path.clone());
+            last_dir_path = Some(&file.path);
         }
-        optimized_deletes.push(file);
+        optimized_deletes.push(file.path.clone());
     }
 
-    stream::iter(optimized_deletes)
-        .map(|item| async move { target_knot.delete(&item.path).await })
-        .buffer_unordered(get_dynamic_io_limit_single(target_knot))
-        .collect::<Vec<Result<()>>>()
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
-
+    target_knot.delete(optimized_deletes).await?;
     Ok(())
 }
 
-async fn add_unique_files<P>(
+const SMALL_FILE_THRESHOLD: u64 = 512 * 1024; // 512 KB
+const MAX_BATCH_BYTES: u64 = 16 * 1024 * 1024; // 16 MB per batch chunk
+const MAX_BATCH_FILES: usize = 256; // Max files per open SSH channel
+
+pub async fn add_unique_files<P>(
     unique_files: &[KnotFile],
     from_root_path: P,
     to_root_path: P,
     from_knot: &Knot,
     to_knot: &Knot,
+    compress: bool,
 ) -> Result<()>
 where
     P: AsRef<Path>,
 {
-    let from_root_path = from_root_path.as_ref();
-    let to_root_path = to_root_path.as_ref();
+    let setup_time = Instant::now();
+    let from_root = from_root_path.as_ref();
+    let to_root = to_root_path.as_ref();
+
     let mut dirs_to_create: HashSet<PathBuf> = HashSet::with_capacity(unique_files.len());
-    let mut files: Vec<KnotFile> = Vec::with_capacity(unique_files.len());
+
+    let mut large_files: Vec<KnotFile> = Vec::new();
+    let mut small_files: Vec<KnotFile> = Vec::new();
 
     for file in unique_files {
-        let relative = file.relative_path(from_root_path);
-        let foreign_path = to_root_path.join(relative);
+        let relative = file.relative_path(from_root);
+
+        let clean_relative = relative.strip_prefix("/").unwrap_or(&relative);
+        let foreign_path = to_root.join(clean_relative);
 
         if file.is_dir {
-            dirs_to_create.insert(foreign_path);
+            if foreign_path != to_root && foreign_path.starts_with(to_root) {
+                dirs_to_create.insert(foreign_path);
+            }
         } else {
             if let Some(parent) = foreign_path.parent() {
-                dirs_to_create.insert(parent.to_path_buf());
+                if parent != to_root && parent.starts_with(to_root) {
+                    dirs_to_create.insert(parent.to_path_buf());
+                }
             }
-            files.push(file.clone());
+            if file.size >= SMALL_FILE_THRESHOLD {
+                large_files.push(file.clone());
+            } else {
+                small_files.push(file.clone());
+            }
         }
     }
+
+    let dirs_to_make = Instant::now();
     if !dirs_to_create.is_empty() {
-        let dirs: Vec<PathBuf> = dirs_to_create.into_iter().collect();
+        let mut dirs: Vec<PathBuf> = dirs_to_create.into_iter().collect();
+        dirs.sort_by_key(|d| d.components().count());
         to_knot.mkdir_batch(dirs).await?;
     }
+    debug!("Dirs to make took: {:.2?}", dirs_to_make.elapsed());
 
-    let pb = create_sync_progress_bar(files.len());
-    stream::iter(files)
+    if small_files.is_empty() && large_files.is_empty() {
+        println!("No files to transfer");
+        return Ok(());
+    }
+
+    println!(
+        "📦 Sync breakdown: {} small files (< {}), {} large files (>= {})",
+        small_files.len(),
+        HumanBytes(SMALL_FILE_THRESHOLD),
+        large_files.len(),
+        HumanBytes(SMALL_FILE_THRESHOLD)
+    );
+    debug!("The set up to transfer took: {:.2?}", setup_time.elapsed());
+    let pb = create_sync_progress_bar(large_files.len() + small_files.len());
+
+    let pb_large = pb.clone();
+    let large_transfer = stream::iter(large_files)
         .map(|file| {
-            let pb_clone = pb.clone();
+            let pb_clone = pb_large.clone();
             async move {
                 let path = file.path.clone();
-                let relative = file.relative_path(from_root_path);
-                let foreign_path = to_root_path.join(relative);
-                debug!("Rewriting file: {foreign_path:#?}");
+                let relative = file.relative_path(from_root);
+                let foreign_path = to_root.join(relative);
                 from_knot.transfer_to(to_knot, &path, &foreign_path).await?;
                 pb_clone.inc(1);
                 Ok::<(), anyhow::Error>(())
             }
         })
         .buffer_unordered(get_dynamic_io_limit(from_knot, to_knot))
-        .try_collect::<Vec<()>>()
-        .await?;
+        .try_collect::<Vec<()>>();
+
+    let pb_small = pb.clone();
+    let small_transfer = async move {
+        small_files.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+        let mut batches = Vec::new();
+        let mut current_batch = Vec::with_capacity(MAX_BATCH_FILES);
+        let mut current_bytes = 0;
+
+        for file in small_files {
+            current_bytes += file.size;
+            current_batch.push(file);
+            if current_bytes >= MAX_BATCH_BYTES || current_batch.len() >= MAX_BATCH_FILES {
+                batches.push(std::mem::take(&mut current_batch));
+                current_bytes = 0;
+            }
+        }
+        if !current_batch.is_empty() {
+            batches.push(current_batch);
+        }
+        let safe_ssh_batch_concurrency = get_dynamic_io_limit(from_knot, to_knot);
+
+        stream::iter(batches)
+            .map(|batch| {
+                let pb_clone = pb_small.clone();
+                async move {
+                    let batch_size = from_knot
+                        .transfer_batch(to_knot, &batch, from_root, to_root, compress)
+                        .await?;
+                    pb_clone.inc(batch_size as u64);
+                    Ok::<(), anyhow::Error>(())
+                }
+            })
+            .buffer_unordered(safe_ssh_batch_concurrency)
+            .try_collect::<Vec<()>>()
+            .await?;
+        Ok::<(), anyhow::Error>(())
+    };
+
+    tokio::try_join!(large_transfer, small_transfer)?;
     pb.finish_with_message("✔  Sync complete!".green().to_string());
     Ok(())
 }

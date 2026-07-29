@@ -66,7 +66,7 @@ pub trait KnotAdapter: Send + Sync {
     ) -> Result<()>;
 
     /// Deletes a file or directory
-    async fn delete(&self, resources: Arc<KnotResourcers>, path: &Path) -> Result<()>;
+    async fn delete(&self, resources: Arc<KnotResourcers>, paths: Vec<PathBuf>) -> Result<()>;
 
     /// Creates a new empty file
     async fn create(&self, resources: Arc<KnotResourcers>, path: &Path) -> Result<()>;
@@ -98,4 +98,18 @@ pub trait KnotAdapter: Send + Sync {
     /// # Warning
     /// Can consume high memory if used on large files
     async fn read_all(&self, resources: Arc<KnotResourcers>, path: &Path) -> Result<Vec<u8>>;
+
+    async fn archive_files(
+        &self,
+        resources: Arc<KnotResourcers>,
+        files: Vec<PathBuf>,
+        dirs: Vec<PathBuf>,
+    ) -> Result<()>;
+
+    async fn recover_files(
+        &self,
+        resources: Arc<KnotResourcers>,
+        paths: Vec<PathBuf>,
+        force: bool,
+    ) -> Result<()>;
 }

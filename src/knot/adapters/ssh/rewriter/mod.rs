@@ -11,6 +11,7 @@ use crate::{
     },
 };
 
+pub mod stream_batch_local;
 pub mod to_local;
 impl SSHAdapter {
     pub async fn classic_rewrite(

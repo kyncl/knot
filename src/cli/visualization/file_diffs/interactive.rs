@@ -8,6 +8,7 @@ use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use indicatif::HumanBytes;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -27,6 +28,7 @@ struct RenderFile {
     mtime: String,
     hash: String,
     type_color: Color,
+    size: String,
 }
 
 struct RenderConflict {
@@ -35,6 +37,7 @@ struct RenderConflict {
     rem_mtime: String,
     src_hash: String,
     rem_hash: String,
+    size_diff: String,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -62,12 +65,14 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                     path_str
                 }
             };
+
             RenderConflict {
                 path,
                 src_mtime: format_relative_time(src.mtime),
                 rem_mtime: format_relative_time(rem.mtime),
                 src_hash: format_hash(src.content_hash),
                 rem_hash: format_hash(rem.content_hash),
+                size_diff: format!("{} | {}", HumanBytes(src.size), HumanBytes(rem.size)),
             }
         })
         .collect();
@@ -91,6 +96,7 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                 mtime: format_relative_time(file.mtime),
                 hash: format_hash(file.content_hash),
                 type_color: Color::Green,
+                size: HumanBytes(file.size).to_string(),
             }
         })
         .collect();
@@ -114,6 +120,7 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                 mtime: format_relative_time(file.mtime),
                 hash: format_hash(file.content_hash),
                 type_color: Color::Blue,
+                size: HumanBytes(file.size).to_string(),
             }
         })
         .collect();
@@ -127,6 +134,7 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
             mtime: format_relative_time(file.mtime),
             hash: format_hash(file.content_hash),
             type_color: Color::Yellow,
+            size: HumanBytes(file.size).to_string(),
         })
         .collect();
 
@@ -270,12 +278,14 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                             "Remote Modified",
                             "Source Hash",
                             "Remote Hash",
+                            "Size diff",
                         ];
                         widths = vec![
-                            Constraint::Percentage(40),
-                            Constraint::Percentage(15),
-                            Constraint::Percentage(15),
-                            Constraint::Percentage(15),
+                            Constraint::Percentage(45),
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
                             Constraint::Percentage(15),
                         ];
                         for item in &cached_conflicts {
@@ -287,16 +297,19 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                                 Cell::from(item.rem_mtime.as_str()).fg(Color::White),
                                 Cell::from(item.src_hash.as_str()).fg(Color::Green),
                                 Cell::from(item.rem_hash.as_str()).fg(Color::Blue),
+                                Cell::from(item.size_diff.as_str()).fg(Color::White),
                             ]));
                         }
                     }
                     ActiveTab::SourceUnique | ActiveTab::RemoteUnique | ActiveTab::Archived => {
-                        header_cols = vec!["Type", "File Path", "Modified Time", "Content Hash"];
+                        header_cols =
+                            vec!["Type", "File Path", "Modified Time", "Content Hash", "Size"];
                         widths = vec![
-                            Constraint::Length(6),
-                            Constraint::Percentage(55),
-                            Constraint::Percentage(20),
-                            Constraint::Percentage(20),
+                            Constraint::Length(5),
+                            Constraint::Percentage(65),
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
                         ];
                         let items = match active_tab {
                             ActiveTab::SourceUnique => &cached_source,
@@ -312,6 +325,7 @@ pub fn file_diff_visualization_interactive(diffs: &FileDiffs) -> Result<()> {
                                 Cell::from(item.path.as_str()).fg(Color::White),
                                 Cell::from(item.mtime.as_str()).fg(Color::Gray),
                                 Cell::from(item.hash.as_str()).fg(Color::DarkGray),
+                                Cell::from(item.size.as_str()).fg(Color::White),
                             ]));
                         }
                     }

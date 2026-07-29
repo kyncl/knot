@@ -1,4 +1,5 @@
-use chrono::{DateTime, Utc};
+use anyhow::{Result, anyhow};
+use chrono::{DateTime, Duration, Utc};
 
 pub fn format_relative_time(mtime_sec: i64) -> String {
     let mtime_dt = match DateTime::from_timestamp(mtime_sec, 0) {
@@ -26,9 +27,44 @@ pub fn format_relative_time(mtime_sec: i64) -> String {
     }
 }
 
+pub fn parse_human_time(input: &str) -> Result<i64> {
+    let input = input.trim().to_lowercase();
+    let parts: Vec<&str> = input.split_whitespace().collect();
+
+    let (amount, unit) = match parts.as_slice() {
+        [num_str, unit, "ago"] => {
+            let num: i64 = num_str.parse().map_err(|_| anyhow!("Invalid number"))?;
+            (num, *unit)
+        }
+        _ if input.len() > 1 => {
+            let (num_str, unit_str) = input.split_at(input.len() - 1);
+            let num: i64 = num_str.parse().map_err(|_| anyhow!("Invalid format"))?;
+            (num, unit_str)
+        }
+        _ => return Err(anyhow!("Unsupported format")),
+    };
+
+    let duration = match unit.trim_end_matches('s') {
+        "s" | "sec" | "second" => Duration::seconds(amount),
+        "m" | "min" | "minute" => Duration::minutes(amount),
+        "h" | "hr" | "hour" => Duration::hours(amount),
+        "d" | "day" => Duration::days(amount),
+        "w" | "week" => Duration::weeks(amount),
+        _ => return Err(anyhow!("Unknown unit: {unit}")),
+    };
+    let target_time = Utc::now() - duration;
+    Ok(target_time.timestamp())
+}
+
 pub fn format_hash(hash: Option<u64>) -> String {
     match hash {
-        Some(h) => format!("0x{:08x}", h as u32),
+        Some(h) => {
+            if h == 0 {
+                format!("ARCHIVE")
+            } else {
+                format!("0x{:08x}", h as u32)
+            }
+        }
         None => "N/A (Dir)".to_string(),
     }
 }

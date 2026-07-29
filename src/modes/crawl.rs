@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
+    COMPRESSION_LEVEL,
     cli::StructFormat::{self, Binary, Json},
     configuration::MainConfig,
     knot::{Knot, KnotType},
@@ -18,25 +19,25 @@ pub async fn crawl(
     main_config: MainConfig,
 ) -> Result<()> {
     let main_config = Arc::new(main_config);
-    let knot = Knot::new(&KnotType::Local, crawl_path, None).await?;
+    let knot = Knot::new(KnotType::Local, crawl_path, None).await?;
     let folder = knot.crawl_dir(main_config).await?;
     match format {
         Json => {
             if compress {
                 let data = serde_json::to_string(&folder)?;
-                let compressed_data = compress_data(data.as_bytes(), 5)?;
+                let compressed_data = compress_data(data.as_bytes(), COMPRESSION_LEVEL)?;
                 let encoded = STANDARD.encode(compressed_data);
                 println!("{encoded}");
             } else {
                 let data = serde_json::to_string_pretty(&folder)?;
-                print!("{data}")
+                println!("{data}")
             }
         }
         Binary => {
             let data = rkyv::to_bytes::<rkyv::rancor::Error>(&folder)
                 .map_err(|e| anyhow!("Failed to serialize payload with rkyv: {e}"))?;
             if compress {
-                let compressed_data = compress_data(&data, 5)?;
+                let compressed_data = compress_data(&data, COMPRESSION_LEVEL)?;
                 let encoded = STANDARD.encode(compressed_data);
                 println!("{encoded}");
             } else {

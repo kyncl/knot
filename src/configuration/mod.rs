@@ -4,7 +4,11 @@ use crate::{
     utils::{paths::convert_home_path, remove_duplicates},
 };
 use anyhow::Result;
+use colored::*;
+use indicatif::HumanBytes;
+use serde::{Deserialize, Serialize};
 use std::{
+    fmt::Display,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -12,20 +16,65 @@ use tokio::sync::Semaphore;
 
 pub mod feature;
 pub mod global;
+pub mod loader;
 pub mod performance;
 
 /// Default values:
 /// Ignorer: empty
-/// Task_limit: 100_000
+/// Task_limit: 1_000
 /// Size_limit: 15 GB
 /// Allow_size_limit: false
 /// Use caching: false
 /// Use gitignore file: false
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MainConfig {
+    // Doesn't make sense to save it inside configuration file
+    #[serde(skip)]
     pub config_path: PathBuf,
+    // Until global has some values worthy of changing inside the file
+    #[serde(skip)]
     pub global: GlobalConfig,
     pub performance: PerformanceConfig,
     pub features: FeatureConfig,
+}
+
+impl Display for MainConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status = |val: bool| {
+            if val {
+                "ENABLED".green().bold()
+            } else {
+                "DISABLED".red().bold()
+            }
+        };
+
+        writeln!(f, "{}", "=== Configuration Summary ===".cyan().bold())?;
+        writeln!(
+            f,
+            "{}: {}",
+            "Config File".bold(),
+            self.config_path.display()
+        )?;
+
+        writeln!(f, "\n{}", "[Features]".yellow().bold())?;
+        writeln!(f, "  Caching:   {}", status(self.features.caching))?;
+        writeln!(f, "  Gitignore: {}", status(self.features.gitignore))?;
+        writeln!(f, "  Compress:  {}", status(self.features.compress))?;
+
+        writeln!(f, "\n{}", "[Performance]".yellow().bold())?;
+        writeln!(
+            f,
+            "  Task Limit: {}",
+            self.performance.task_limit.to_string().bold()
+        )?;
+        writeln!(
+            f,
+            "  Size Limit: {}",
+            HumanBytes(self.performance.size_limit).to_string().bold()
+        )?;
+
+        Ok(())
+    }
 }
 
 impl Default for MainConfig {
@@ -35,17 +84,6 @@ impl Default for MainConfig {
 }
 
 impl MainConfig {
-    /// Will read configuration file
-    /// Base on it will create main config struct
-    pub fn from<P>(_path: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        todo!("From function is not made");
-        // let path = path.as_ref().to_path_buf();
-        // MainConfig::new().config_path(path)
-    }
-
     pub fn new() -> Self {
         Self {
             config_path: PathBuf::new(),
@@ -107,6 +145,14 @@ impl MainConfig {
     /// If you want cache the whole structure of the folder so the next check is faster
     pub fn caching(mut self, should: bool) -> Self {
         self.features.caching = should;
+        self
+    }
+
+    /// Feature settings
+    /// If you want use compression on communication with remote device
+    /// This may slow or fasten some operation
+    pub fn compress(mut self, should: bool) -> Self {
+        self.features.compress = should;
         self
     }
 

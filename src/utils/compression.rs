@@ -1,4 +1,6 @@
 use anyhow::Result;
+use clap::ValueEnum;
+use strum::{AsRefStr, Display, EnumIter};
 
 pub fn compress_data(raw_data: &[u8], compression_level: i32) -> Result<Vec<u8>> {
     let compressed_data: Vec<u8> = zstd::encode_all(raw_data, compression_level)?;
@@ -8,4 +10,12 @@ pub fn compress_data(raw_data: &[u8], compression_level: i32) -> Result<Vec<u8>>
 pub fn decompress_data(compressed_data: &[u8]) -> Result<Vec<u8>> {
     let original_data: Vec<u8> = zstd::decode_all(compressed_data)?;
     Ok(original_data)
+}
+
+#[derive(ValueEnum, Default, PartialEq, Eq, Display, Debug, EnumIter, AsRefStr, Clone, Copy)]
+#[strum(serialize_all = "kebab-case")]
+pub enum Compressions {
+    Zstd,
+    #[default]
+    None,
 }

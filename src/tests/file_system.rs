@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::fs;
 
-use crate::cli::FileSubcommand;
+use crate::cli::subcommands::file_system::FileSubcommand;
 use crate::knot::{Knot, KnotType};
 use crate::modes::file::handle_files;
 
@@ -20,7 +20,7 @@ async fn local_setup() -> Result<(Knot, PathBuf)> {
     }
     tokio::fs::create_dir_all(&test_dir).await?;
 
-    let knot = Knot::new(&KnotType::Local, &test_dir, None).await?;
+    let knot = Knot::new(KnotType::Local, &test_dir, None).await?;
     Ok((knot, test_dir))
 }
 
@@ -126,7 +126,7 @@ async fn test_rename_and_delete() -> Result<()> {
     assert!(new_path.exists());
 
     // 3. Delete file
-    knot.delete(&new_path).await?;
+    knot.delete(vec![new_path.clone()]).await?;
     assert!(!new_path.exists());
 
     cleanup_dir(&dir).await;
@@ -219,7 +219,7 @@ async fn test_cli_rename_and_delete() -> Result<()> {
     assert!(new_path.exists());
 
     let delete_cmd = FileSubcommand::Delete {
-        path: new_path.clone(),
+        path: vec![new_path.clone()],
     };
     handle_files(delete_cmd).await?;
     assert!(!new_path.exists());

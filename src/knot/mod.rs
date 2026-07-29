@@ -2,16 +2,22 @@ use crate::{
     configuration::MainConfig,
     knot::{
         KnotType::{Local, SFTP, SSH},
-        adapters::{KnotAdapter, local::LocalAdapter, ssh::SSHAdapter},
+        adapters::{
+            KnotAdapter,
+            local::{LocalAdapter, rewriter::stream_batch_ssh::stream_batch_ssh},
+            ssh::{SSHAdapter, rewriter::stream_batch_local::stream_batch_local},
+        },
         credentials::KnotCredentials,
         file::KnotFile,
         manager::RemoteKnot,
         resources::KnotResourcers,
     },
-    modes::sync::sync,
+    modes::sync::{get_dynamic_io_limit, sync},
     utils::paths::convert_home_path,
 };
 use anyhow::Result;
+use futures::{StreamExt, TryStreamExt, stream};
+use serde::{Deserialize, Serialize};
 use std::{
     ops::Range,
     path::{Path, PathBuf},
@@ -25,17 +31,38 @@ pub mod file_diffs;
 pub mod manager;
 pub mod resources;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum KnotType {
     Local,
     SSH,
     SFTP,
 }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct KnotConfig {
+    #[serde(rename = "type")]
+    pub adapter_type: KnotType,
+    pub credentials: Option<KnotCredentials>,
+    pub path: PathBuf,
+}
+impl KnotConfig {
+    pub fn new<P: AsRef<Path>>(
+        ktype: KnotType,
+        path: P,
+        credentials: Option<KnotCredentials>,
+    ) -> Self {
+        let path = path.as_ref().to_path_buf();
+        Self {
+            path,
+            credentials,
+            adapter_type: ktype,
+        }
+    }
+}
 
 pub struct Knot {
     adapter: Box<dyn KnotAdapter>,
-    pub credentials: Option<KnotCredentials>,
     pub resources: Arc<KnotResourcers>,
+    pub credentials: Option<KnotCredentials>,
     /// To path specific dir
     pub path: PathBuf,
     pub files: Vec<KnotFile>,
@@ -44,7 +71,7 @@ impl Knot {
     /// Creates new Knot
     /// Fails only while setting resources (creating local knot cannot return err)
     pub async fn new<P>(
-        ktype: &KnotType,
+        ktype: KnotType,
         path: P,
         credentials: Option<KnotCredentials>,
     ) -> Result<Self>
@@ -56,7 +83,7 @@ impl Knot {
         // My response: 'Please write absolute path to rule out any potential misinterpretation.
         // Only possible one is '~' for Linux systems'
         let username = if let Some(cred) = credentials.as_ref()
-            && *ktype != KnotType::Local
+            && ktype != KnotType::Local
         {
             Some(cred.username.clone())
         } else {
@@ -80,6 +107,10 @@ impl Knot {
             path,
             files: vec![],
         })
+    }
+
+    pub async fn from(config: KnotConfig) -> Result<Self> {
+        Knot::new(config.adapter_type, config.path, config.credentials).await
     }
 
     pub fn adapter_name(&self) -> String {
@@ -106,6 +137,12 @@ impl Knot {
             .await?;
         self.files = folder;
         Ok(())
+    }
+
+    pub async fn archive_files(&self, files: Vec<PathBuf>, dirs: Vec<PathBuf>) -> Result<()> {
+        self.adapter
+            .archive_files(Arc::clone(&self.resources), files, dirs)
+            .await
     }
 
     /// Streams/writes local file content to a foreign knot target
@@ -155,9 +192,15 @@ impl Knot {
     }
 
     /// Deletes a file or directory
-    pub async fn delete<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+    pub async fn delete(&self, paths: Vec<PathBuf>) -> Result<()> {
         self.adapter
-            .delete(Arc::clone(&self.resources), path.as_ref())
+            .delete(Arc::clone(&self.resources), paths)
+            .await
+    }
+
+    pub async fn recover_files(&self, paths: Vec<PathBuf>, force: bool) -> Result<()> {
+        self.adapter
+            .recover_files(Arc::clone(&self.resources), paths, force)
             .await
     }
 
@@ -210,7 +253,60 @@ impl Knot {
             .await
     }
 
-    pub async fn sync(&self, foreign: &RemoteKnot) -> Result<()> {
-        sync(self, foreign).await
+    pub async fn sync(&self, foreign: &RemoteKnot, config: Arc<MainConfig>) -> Result<()> {
+        sync(self, foreign, config).await
+    }
+
+    /// TODO: This function should be separated into adapters
+    /// Returns number of files, which were transferred
+    pub async fn transfer_batch<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        foreign_knot: &Knot,
+        files: &[KnotFile],
+        from_root: P,
+        to_root: Q,
+        compress: bool,
+    ) -> Result<usize> {
+        let from_root = from_root.as_ref();
+        let to_root = to_root.as_ref();
+
+        if let Some(foreign_pool) = &foreign_knot.resources.ssh
+            && self.knot_type() == KnotType::Local
+        {
+            let foreign_session = foreign_pool.try_get_session(3).await?;
+            stream_batch_ssh(
+                files,
+                from_root,
+                to_root,
+                foreign_knot,
+                foreign_session,
+                compress,
+            )
+            .await
+        } else if let Some(self_pool) = &self.resources.ssh
+            && foreign_knot.knot_type() == KnotType::Local
+        {
+            let self_session = self_pool.try_get_session(3).await?;
+            stream_batch_local(
+                files,
+                from_root,
+                to_root,
+                foreign_knot,
+                self_session,
+                compress,
+            )
+            .await
+        } else {
+            stream::iter(files)
+                .map(|file| async move {
+                    let rel = file.relative_path(from_root);
+                    let dest = to_root.join(rel);
+                    self.transfer_to(foreign_knot, &file.path, &dest).await
+                })
+                .buffer_unordered(get_dynamic_io_limit(self, foreign_knot))
+                .try_collect::<Vec<()>>()
+                .await?;
+            Ok(files.len())
+        }
     }
 }

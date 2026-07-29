@@ -1,4 +1,4 @@
-use crate::APP_FOLDER;
+use crate::{APP_FOLDER, utils::paths::relative_path};
 use anyhow::{Result, anyhow};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, with::AsString};
 use serde::{Deserialize, Serialize};
@@ -45,6 +45,7 @@ pub struct KnotFile {
     pub is_dir: bool,
     /// modified time
     pub mtime: i64,
+    pub size: u64,
 }
 impl KnotFile {
     pub fn is_symling(&self) -> bool {
@@ -61,7 +62,7 @@ impl KnotFile {
             ))
         }
     }
-    pub fn new<P>(path: P, mtime: i64, is_dir: bool, content_hash: Option<u64>) -> Self
+    pub fn new<P>(path: P, mtime: i64, size: u64, is_dir: bool, content_hash: Option<u64>) -> Self
     where
         P: AsRef<Path>,
     {
@@ -70,21 +71,10 @@ impl KnotFile {
             mtime,
             content_hash,
             is_dir,
+            size,
         }
     }
     pub fn relative_path<P: AsRef<Path>>(&self, root: P) -> String {
-        let root = root.as_ref();
-        let rel = match self.path.strip_prefix(root) {
-            Ok(p) => p,
-            Err(_) => &self.path,
-        };
-        rel.components()
-            .filter_map(|c| match c {
-                std::path::Component::Normal(s) => s.to_str(),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("/")
-            .replace("\\", "/")
+        relative_path(&self.path, root)
     }
 }
