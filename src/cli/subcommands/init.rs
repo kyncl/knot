@@ -45,8 +45,10 @@ pub fn configuration() -> Result<()> {
     println!("=== Main configuration ===");
     let options = vec!["Features", "Performance", "Ignore patterns"];
 
-    let mut render_config = RenderConfig::default();
-    render_config.highlighted_option_prefix = Styled::new("❯").with_fg(Color::LightGreen);
+    let render_config = RenderConfig {
+        highlighted_option_prefix: Styled::new("❯").with_fg(Color::LightGreen),
+        ..Default::default()
+    };
 
     let choices = inquire::MultiSelect::new(
         "Select which sections to customize (unselected will use defaults):",

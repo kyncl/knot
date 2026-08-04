@@ -27,8 +27,10 @@ pub fn prompt_path(
     place_holder: Option<&str>,
     help_message: Option<&str>,
 ) -> Result<PathBuf> {
-    let mut render_config = RenderConfig::default();
-    render_config.highlighted_option_prefix = Styled::new("❯").with_fg(Color::LightGreen);
+    let render_config = RenderConfig {
+        highlighted_option_prefix: Styled::new("❯").with_fg(Color::LightGreen),
+        ..Default::default()
+    };
     let mut prompt = Text::new("Enter path:");
     if let Some(place_holder) = place_holder {
         prompt = prompt.with_placeholder(place_holder);
