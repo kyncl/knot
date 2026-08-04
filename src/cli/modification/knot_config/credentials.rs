@@ -163,9 +163,10 @@ pub fn prompt_knot_credentials(
     ktype: Option<&KnotType>,
 ) -> Result<(Option<KnotCredentials>, KnotType)> {
     if let Some(ktype) = ktype
-        && *ktype == KnotType::Local {
-            return Ok((None, ktype.clone()));
-        }
+        && *ktype == KnotType::Local
+    {
+        return Ok((None, ktype.clone()));
+    }
 
     let raw_input = Text::new("Enter connection string or Host/IP:")
         .with_placeholder("ssh://user@host:22 or user@host:port")

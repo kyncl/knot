@@ -12,14 +12,17 @@ use tar::{EntryType, Header};
 use tokio::io::AsyncReadExt;
 use zstd::Encoder;
 
-pub async fn stream_batch_ssh(
-    files: &[KnotFile],
+pub async fn stream_batch_ssh<F>(
+    files: &[F],
     from_root: &Path,
     to_root: &Path,
     foreign_knot: &Knot,
     foreign_session: Object<SSHManager>,
     compress: bool,
-) -> Result<usize> {
+) -> Result<usize>
+where
+    F: std::borrow::Borrow<KnotFile>,
+{
     let session = foreign_session;
     let bin = if let Some(bin) = foreign_knot.resources.ssh_executable.as_deref() {
         bin
@@ -54,6 +57,7 @@ pub async fn stream_batch_ssh(
     };
 
     for file in files {
+        let file = file.borrow();
         let relative_path = file.relative_path(from_root);
 
         let mut local_file = tokio::fs::File::open(&file.path).await?;

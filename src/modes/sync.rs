@@ -15,6 +15,7 @@ use tracing::debug;
 
 use crate::{
     STABLE_CHANNELS_PER_SESSION,
+    cli::visualization::resolver::{ResolverFiles, resolve_files},
     configuration::MainConfig,
     knot::{Knot, file::KnotFile, file_diffs::FileDiffs, remote::RemoteKnot},
     utils::behavior::{ConflictBehavior, UniqueBehavior},
@@ -76,7 +77,36 @@ async fn handle_conflicts(
     let limit = get_dynamic_io_limit(source, remote);
     match conflicts {
         ConflictBehavior::Ask => {
-            todo!("Interactive prompt logic");
+            let relative_files: Vec<PathBuf> = file_conflicts
+                .iter()
+                .filter_map(|(s, r)| {
+                    if !s.is_dir && !r.is_dir {
+                        Some(PathBuf::from(s.relative_path(&source.path)))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let resolved_files =
+                resolve_files::<PathBuf>(&relative_files, ResolverFiles::SourceRemote, None)?;
+            let source_iter = resolved_files.first.into_iter().map(|f| (f, true));
+            let remote_iter = resolved_files.second.into_iter().map(|f| (f, false));
+
+            stream::iter(source_iter.chain(remote_iter))
+                .map(|(f, is_source_to_remote)| async move {
+                    let s = source.path.join(&f);
+                    let r = remote.path.join(&f);
+
+                    if is_source_to_remote {
+                        source.transfer_to(remote, &s, &r).await
+                    } else {
+                        remote.transfer_to(source, &r, &s).await
+                    }
+                })
+                .buffer_unordered(limit)
+                .try_collect::<Vec<()>>()
+                .await?;
         }
         ConflictBehavior::Skip => {
             debug!("Skipping all conflicts...");
@@ -144,7 +174,89 @@ async fn handle_uniques(
     compress: bool,
 ) -> Result<()> {
     match uniques {
-        UniqueBehavior::Ask => {}
+        UniqueBehavior::Ask => {
+            let source_paths: Vec<PathBuf> = diffs
+                .source_unique
+                .iter()
+                .map(|file| file.path.clone())
+                .collect();
+
+            if !source_paths.is_empty() {
+                let source_handler = resolve_files(
+                    &source_paths,
+                    ResolverFiles::UniqueHandle,
+                    Some(&source.path),
+                )?;
+
+                let mut source_to_add = Vec::new();
+                let mut source_to_delete = Vec::new();
+
+                for file in &diffs.source_unique {
+                    if source_handler.first.contains(&file.path) {
+                        source_to_add.push(file);
+                    } else if source_handler.second.contains(&file.path) {
+                        source_to_delete.push(file);
+                    }
+                }
+
+                if !source_to_add.is_empty() {
+                    add_unique_files(
+                        &source_to_add,
+                        &diffs.source_root_path,
+                        &diffs.remote_root_path,
+                        source,
+                        remote,
+                        compress,
+                    )
+                    .await?;
+                }
+
+                if !source_to_delete.is_empty() {
+                    execute_optimized_deletes(&mut source_to_delete, source).await?;
+                }
+            }
+
+            let remote_paths: Vec<PathBuf> = diffs
+                .remote_unique
+                .iter()
+                .map(|file| file.path.clone())
+                .collect();
+
+            if !remote_paths.is_empty() {
+                let remote_handler = resolve_files(
+                    &remote_paths,
+                    ResolverFiles::UniqueHandle,
+                    Some(&remote.path),
+                )?;
+
+                let mut remote_to_add = Vec::new();
+                let mut remote_to_delete = Vec::new();
+
+                for file in &diffs.remote_unique {
+                    if remote_handler.first.contains(&file.path) {
+                        remote_to_add.push(file);
+                    } else if remote_handler.second.contains(&file.path) {
+                        remote_to_delete.push(file);
+                    }
+                }
+
+                if !remote_to_add.is_empty() {
+                    add_unique_files(
+                        &remote_to_add,
+                        &diffs.remote_root_path,
+                        &diffs.source_root_path,
+                        remote,
+                        source,
+                        compress,
+                    )
+                    .await?;
+                }
+
+                if !remote_to_delete.is_empty() {
+                    execute_optimized_deletes(&mut remote_to_delete, remote).await?;
+                }
+            }
+        }
         UniqueBehavior::Skip => {
             debug!("Skipping all unique files...");
         }
@@ -166,12 +278,16 @@ async fn handle_uniques(
                 now.elapsed()
             );
 
-            let mut to_archive = diffs.remote_unique.clone();
+            let mut to_archive: Vec<&KnotFile> = diffs.remote_unique.iter().collect();
             to_archive.sort_by_key(|f| std::cmp::Reverse(f.path.components().count()));
+
             let (archive_files, archive_dirs): (Vec<_>, Vec<_>) =
                 to_archive.into_iter().partition(|file| !file.is_dir);
-            let archive_files: Vec<PathBuf> = archive_files.into_iter().map(|f| f.path).collect();
-            let archive_dirs: Vec<PathBuf> = archive_dirs.into_iter().map(|f| f.path).collect();
+
+            let archive_files: Vec<PathBuf> =
+                archive_files.into_iter().map(|f| f.path.clone()).collect();
+            let archive_dirs: Vec<PathBuf> =
+                archive_dirs.into_iter().map(|f| f.path.clone()).collect();
             let af_len = archive_files.len();
             let ad_len = archive_dirs.len();
             let now = Instant::now();
@@ -202,7 +318,8 @@ async fn handle_uniques(
             )?;
         }
         UniqueBehavior::MirrorSource => {
-            execute_optimized_deletes(&diffs.remote_unique, remote).await?;
+            let mut remote_refs: Vec<&KnotFile> = diffs.remote_unique.iter().collect();
+            execute_optimized_deletes(&mut remote_refs, remote).await?;
             add_unique_files(
                 &diffs.source_unique,
                 &diffs.source_root_path,
@@ -214,7 +331,8 @@ async fn handle_uniques(
             .await?;
         }
         UniqueBehavior::MirrorRemote => {
-            execute_optimized_deletes(&diffs.source_unique, source).await?;
+            let mut source_refs: Vec<&KnotFile> = diffs.source_unique.iter().collect();
+            execute_optimized_deletes(&mut source_refs, source).await?;
             add_unique_files(
                 &diffs.remote_unique,
                 &diffs.remote_root_path,
@@ -232,14 +350,21 @@ async fn handle_uniques(
 /// Batches and processes deletions cleanly.
 /// If a parent directory is marked for deletion, it drops all internal files
 /// from the pipeline since wiping the directory kills them all at once
-async fn execute_optimized_deletes(unique_files: &[KnotFile], target_knot: &Knot) -> Result<()> {
-    let mut targets: Vec<&KnotFile> = unique_files.iter().collect();
+async fn execute_optimized_deletes<F>(unique_files: &mut [F], target_knot: &Knot) -> Result<()>
+where
+    F: std::borrow::Borrow<KnotFile>,
+{
     // Lexicographical sort guarantees parents come before children
-    targets.sort_by(|a, b| a.path.cmp(&b.path));
-    let mut optimized_deletes: Vec<PathBuf> = Vec::with_capacity(targets.len());
+    unique_files.sort_by(|a, b| {
+        let a = a.borrow();
+        let b = b.borrow();
+        a.path.cmp(&b.path)
+    });
+    let mut optimized_deletes: Vec<PathBuf> = Vec::with_capacity(unique_files.len());
     let mut last_dir_path: Option<&Path> = None;
 
-    for file in targets {
+    for file in unique_files {
+        let file = file.borrow();
         if let Some(parent_path) = last_dir_path
             && file.path.starts_with(parent_path)
         {
@@ -259,8 +384,8 @@ const SMALL_FILE_THRESHOLD: u64 = 512 * 1024; // 512 KB
 const MAX_BATCH_BYTES: u64 = 16 * 1024 * 1024; // 16 MB per batch chunk
 const MAX_BATCH_FILES: usize = 256; // Max files per open SSH channel
 
-pub async fn add_unique_files<P>(
-    unique_files: &[KnotFile],
+pub async fn add_unique_files<P, F>(
+    unique_files: &[F],
     from_root_path: P,
     to_root_path: P,
     from_knot: &Knot,
@@ -269,6 +394,7 @@ pub async fn add_unique_files<P>(
 ) -> Result<()>
 where
     P: AsRef<Path>,
+    F: std::borrow::Borrow<KnotFile>,
 {
     let setup_time = Instant::now();
     let from_root = from_root_path.as_ref();
@@ -276,10 +402,11 @@ where
 
     let mut dirs_to_create: HashSet<PathBuf> = HashSet::with_capacity(unique_files.len());
 
-    let mut large_files: Vec<KnotFile> = Vec::new();
-    let mut small_files: Vec<KnotFile> = Vec::new();
+    let mut large_files: Vec<&KnotFile> = Vec::new();
+    let mut small_files: Vec<&KnotFile> = Vec::new();
 
     for file in unique_files {
+        let file = file.borrow();
         let relative = file.relative_path(from_root);
 
         let clean_relative = relative.strip_prefix("/").unwrap_or(&relative);
@@ -297,9 +424,9 @@ where
                 dirs_to_create.insert(parent.to_path_buf());
             }
             if file.size >= SMALL_FILE_THRESHOLD {
-                large_files.push(file.clone());
+                large_files.push(file);
             } else {
-                small_files.push(file.clone());
+                small_files.push(file);
             }
         }
     }

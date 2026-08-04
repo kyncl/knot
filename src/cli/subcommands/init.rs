@@ -139,18 +139,18 @@ pub fn configuration() -> Result<()> {
     if !loader.ignore_patterns().trim().is_empty()
         && let Some(file_path) =
             resolve_save_path(&path_to_save, IGNORE_PATTERNS_FILE, "Ignore Patterns")?
-        {
-            loader.save_ignore_patterns(&file_path)?;
-            println!("Saved Ignore Patterns into {file_path:?}");
-        }
+    {
+        loader.save_ignore_patterns(&file_path)?;
+        println!("Saved Ignore Patterns into {file_path:?}");
+    }
 
     if !remote_knots_loader.knots.is_empty()
         && let Some(file_path) =
             resolve_save_path(&path_to_save, KNOTS_CONFIGURATION, "Remote Knots")?
-        {
-            remote_knots_loader.save(&file_path)?;
-            println!("Saved Remote Knots into {file_path:?}");
-        }
+    {
+        remote_knots_loader.save(&file_path)?;
+        println!("Saved Remote Knots into {file_path:?}");
+    }
     Ok(())
 }
 

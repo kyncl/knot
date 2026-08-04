@@ -24,6 +24,7 @@ use crate::{USER_AWAY_MSG, USER_CAMEBACK_MSG};
 pub enum ResolverFiles {
     Archiving,
     SourceRemote,
+    UniqueHandle,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,11 +42,11 @@ enum FileDestination {
 }
 
 pub struct ResolvedFiles {
-    /// Recover | Source
+    /// Recover | Source | Upload
     pub first: Vec<PathBuf>,
-    /// Remove  | Remote
+    /// Remove  | Remote | Delete
     pub second: Vec<PathBuf>,
-    /// Ignore  | Skip
+    /// Ignore  | Skip | Skip
     pub skipped: Vec<PathBuf>,
 }
 
@@ -89,8 +90,21 @@ impl ResolverFiles {
                 skip_label: "Ignore",
                 skip_color: Color::Gray,
                 skip_icon: "◌",
-                title: "SYNC RESOLVER",
+                title: "CONFLICT RESOLVER",
                 title_color: Color::LightBlue,
+            },
+            ResolverFiles::UniqueHandle => ResolverConfig {
+                first_label: "Upload",
+                first_color: Color::Green,
+                first_icon: "●",
+                second_label: "Delete",
+                second_color: Color::Red,
+                second_icon: "✕",
+                skip_label: "Skip",
+                skip_color: Color::Gray,
+                skip_icon: "◌",
+                title: "UNIQUE RESOLVER",
+                title_color: Color::LightGreen,
             },
         }
     }

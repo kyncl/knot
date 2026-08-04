@@ -11,14 +11,17 @@ use crate::{
     modes::file::atomic_commit,
 };
 
-pub async fn stream_batch_local(
-    files: &[KnotFile],
+pub async fn stream_batch_local<F>(
+    files: &[F],
     from_root: &Path,
     to_root: &Path,
     foreign_knot: &Knot,
     foreign_session: Object<SSHManager>,
     compress: bool,
-) -> Result<usize> {
+) -> Result<usize>
+where
+    F: std::borrow::Borrow<KnotFile>,
+{
     let session = foreign_session;
     let bin = if let Some(bin) = foreign_knot.resources.ssh_executable.as_deref() {
         bin
@@ -42,6 +45,7 @@ pub async fn stream_batch_local(
     channel.exec(true, cmd.as_bytes()).await?;
     let mut payload = String::new();
     for file in files {
+        let file = file.borrow();
         let rel_path = file.relative_path(from_root);
         payload.push_str(&rel_path);
         payload.push('\n');

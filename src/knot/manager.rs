@@ -4,7 +4,7 @@ use anyhow::Result;
 use futures::future::try_join_all;
 
 use crate::{
-    configuration::{ MainConfig},
+    configuration::MainConfig,
     knot::{Knot, file::KnotFile, remote::RemoteKnot},
     utils::behavior::Behavior,
 };

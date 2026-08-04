@@ -294,14 +294,19 @@ impl Knot {
 
     /// TODO: This function should be separated into adapters
     /// Returns number of files, which were transferred
-    pub async fn transfer_batch<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub async fn transfer_batch<P, Q, F>(
         &self,
         foreign_knot: &Knot,
-        files: &[KnotFile],
+        files: &[F],
         from_root: P,
         to_root: Q,
         compress: bool,
-    ) -> Result<usize> {
+    ) -> Result<usize>
+    where
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
+        F: std::borrow::Borrow<KnotFile>,
+    {
         let from_root = from_root.as_ref();
         let to_root = to_root.as_ref();
 
@@ -334,6 +339,7 @@ impl Knot {
         } else {
             stream::iter(files)
                 .map(|file| async move {
+                    let file = file.borrow();
                     let rel = file.relative_path(from_root);
                     let dest = to_root.join(rel);
                     self.transfer_to(foreign_knot, &file.path, &dest).await
