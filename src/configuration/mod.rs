@@ -57,19 +57,24 @@ impl Display for MainConfig {
         )?;
 
         writeln!(f, "\n{}", "[Features]".yellow().bold())?;
-        writeln!(f, "  Caching:   {}", status(self.features.caching))?;
-        writeln!(f, "  Gitignore: {}", status(self.features.gitignore))?;
-        writeln!(f, "  Compress:  {}", status(self.features.compress))?;
+        writeln!(f, "  Caching:          {}", status(self.features.caching))?;
+        writeln!(f, "  Gitignore:        {}", status(self.features.gitignore))?;
+        writeln!(f, "  Compress:         {}", status(self.features.compress))?;
 
         writeln!(f, "\n{}", "[Performance]".yellow().bold())?;
         writeln!(
             f,
-            "  Task Limit: {}",
+            "  Task Limit:       {}",
             self.performance.task_limit.to_string().bold()
         )?;
         writeln!(
             f,
-            "  Size Limit: {}",
+            "  Limit file size:  {}",
+            status(self.performance.allow_size_limit)
+        )?;
+        writeln!(
+            f,
+            "  Size Limit:       {}",
             HumanBytes(self.performance.size_limit).to_string().bold()
         )?;
 

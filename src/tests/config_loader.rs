@@ -3,13 +3,13 @@ use std::fs;
 use anyhow::Result;
 
 use crate::{
-    configuration::{MainConfig, loader::ConfigurationLoader},
+    configuration::{MainConfig, loader::configuration::ConfigurationLoader},
     knot::{KnotConfig, KnotType},
     utils::paths::temporal_file,
 };
 
 #[test]
-fn test_save_load_configuration() -> Result<()> {
+fn save_load_configuration() -> Result<()> {
     fs::create_dir_all("./testing")?;
     let config_path = temporal_file("./testing/config.toml")?;
     let data = ConfigurationLoader {
@@ -25,7 +25,7 @@ fn test_save_load_configuration() -> Result<()> {
 }
 
 #[test]
-fn test_configuration_default_values() -> Result<()> {
+fn configuration_default_values() -> Result<()> {
     fs::create_dir_all("./testing")?;
     let config_path = temporal_file("./testing/config.toml")?;
     ConfigurationLoader::default_save(&config_path)?;

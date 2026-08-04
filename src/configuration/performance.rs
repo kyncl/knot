@@ -10,6 +10,8 @@ pub struct PerformanceConfig {
     /// Is made from task_limit
     #[serde(skip)]
     pub limiter: Arc<Semaphore>,
+    // Right now I think it's not good idea to give the power to change this value
+    #[serde(skip)]
     pub task_limit: u64,
     #[serde(with = "human_size")]
     pub size_limit: u64,
@@ -65,13 +67,15 @@ impl Default for PerformanceConfig {
 
 #[derive(Deserialize)]
 struct PerformanceConfigDto {
-    pub task_limit: u64,
+    // When it will make sense to modify this number
+    // pub task_limit: u64,
     #[serde(with = "human_size")]
     pub size_limit: u64,
     pub allow_size_limit: bool,
 }
 impl From<PerformanceConfigDto> for PerformanceConfig {
     fn from(dto: PerformanceConfigDto) -> Self {
-        Self::new(dto.size_limit, dto.task_limit, dto.allow_size_limit)
+        // Self::new(dto.size_limit, dto.task_limit, dto.allow_size_limit)
+        Self::new(dto.size_limit, 1000, dto.allow_size_limit)
     }
 }

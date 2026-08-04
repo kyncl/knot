@@ -7,8 +7,10 @@ pub mod modes;
 pub mod tests;
 pub mod utils;
 
-pub const APP_FOLDER: &str = ".knot";
+pub const CONFIGURATION_FOLDER: &str = ".knot";
 pub const CONFIG_FILE: &str = "config.toml";
+pub const IGNORE_PATTERNS_FILE: &str = "knotignore";
+pub const KNOTS_CONFIGURATION: &str = "knots.toml";
 /// If you name your file with .knot.knot_tmp_, sorry but bad naming
 /// (yes extra knot is just for lesser chance of rewriting wrong file)
 pub const TEMPORAL_SUFFIX: &str = "_knot.knot_tmp";

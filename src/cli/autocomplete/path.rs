@@ -4,7 +4,17 @@ use inquire::{Autocomplete, autocompletion::Replacement};
 #[derive(Clone, Default)]
 pub struct FilePathCompleter {
     suggestion: Option<String>,
+    use_files: bool,
 }
+impl FilePathCompleter {
+    pub fn new(use_files: bool) -> Self {
+        Self {
+            suggestion: None,
+            use_files,
+        }
+    }
+}
+
 impl Autocomplete for FilePathCompleter {
     fn get_suggestions(
         &mut self,
@@ -31,14 +41,15 @@ impl Autocomplete for FilePathCompleter {
         for entry in dir_read.flatten() {
             let file_path = entry.path().to_string_lossy().to_string();
             if file_path.starts_with(&input_path) {
-                if let Ok(metadata) = entry.metadata()
-                    && metadata.is_file()
-                {
+                let metadata = entry.metadata()?;
+                if metadata.is_file() && !self.use_files {
                     continue;
                 }
 
                 let mut hint = entry.path().to_string_lossy().to_string();
-                hint.push('/');
+                if metadata.is_dir() {
+                    hint.push('/');
+                }
 
                 if input.starts_with('~') && !home_dir.is_empty() && hint.starts_with(&home_dir) {
                     hint = hint.replacen(&home_dir, "~", 1);

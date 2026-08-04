@@ -2,8 +2,12 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use strum::Display;
 
-use crate::cli::subcommands::{archiving::ArchiveSubcommand, file_system::FileSubcommand};
+use crate::cli::subcommands::{
+    archiving::ArchiveSubcommand, file_system::FileSubcommand, modify::ModifySubcommand,
+};
 pub mod autocomplete;
+pub mod modification;
+pub mod resolvers;
 pub mod subcommands;
 pub mod visualization;
 
@@ -28,6 +32,19 @@ pub enum ModeArgs {
         config_path: Option<PathBuf>,
     },
 
+    /// Initialize your configuration file with comfy CLI
+    Init,
+
+    /// Modify specific property of configuration
+    Modify {
+        #[command(subcommand)]
+        specific_property: ModifySubcommand,
+
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
+
     /// Manage local archive files
     ArchiveLocal {
         #[command(subcommand)]
@@ -39,7 +56,9 @@ pub enum ModeArgs {
         #[command(subcommand)]
         actions: Option<ArchiveSubcommand>,
 
-        /// Target index when multiple remote knots exist (prompts interactively if omitted)
+        /// Target index when multiple remote knots exist
+        ///
+        /// Prompts interactively if omitted
         #[arg(short = 'i', long)]
         index: Option<usize>,
 

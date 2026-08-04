@@ -7,13 +7,13 @@ use crate::{
             local::{LocalAdapter, rewriter::stream_batch_ssh::stream_batch_ssh},
             ssh::{SSHAdapter, rewriter::stream_batch_local::stream_batch_local},
         },
-        credentials::KnotCredentials,
+        credentials::{KnotCredentials, SavedAuthMethod},
         file::KnotFile,
-        manager::RemoteKnot,
+        remote::RemoteKnot,
         resources::KnotResourcers,
     },
     modes::sync::{get_dynamic_io_limit, sync},
-    utils::paths::convert_home_path,
+    utils::{normalize_property, paths::convert_home_path},
 };
 use anyhow::Result;
 use futures::{StreamExt, TryStreamExt, stream};
@@ -29,14 +29,40 @@ pub mod credentials;
 pub mod file;
 pub mod file_diffs;
 pub mod manager;
+pub mod remote;
 pub mod resources;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum KnotType {
     Local,
     SSH,
     SFTP,
 }
+use serde::{Deserializer, de};
+impl<'de> Deserialize<'de> for KnotType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match normalize_property(&s).as_str() {
+            "local" => Ok(KnotType::Local),
+            "ssh" => Ok(KnotType::SSH),
+            "sftp" => Ok(KnotType::SFTP),
+            _ => Err(de::Error::unknown_variant(&s, &["local", "ssh", "sftp"])),
+        }
+    }
+}
+impl std::fmt::Display for KnotType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Local => write!(f, "Local System"),
+            Self::SSH => write!(f, "SSH remote"),
+            Self::SFTP => write!(f, "SFTP remote"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KnotConfig {
     #[serde(rename = "type")]
@@ -78,6 +104,12 @@ impl Knot {
     where
         P: AsRef<Path>,
     {
+        // Making sure that every knot has it's auth set from configuration
+        let mut credentials = credentials;
+        if let Some(cred) = &mut credentials {
+            cred.auth = SavedAuthMethod::to_runtime_auth(&cred.config_auth)?;
+        }
+
         // If user has remote connection to server that is running MacOS and will use '~'
         // it will, instead of /Users/{cred.username}, be /home/{cred.username}
         // My response: 'Please write absolute path to rule out any potential misinterpretation.
@@ -111,6 +143,9 @@ impl Knot {
 
     pub async fn from(config: KnotConfig) -> Result<Self> {
         Knot::new(config.adapter_type, config.path, config.credentials).await
+    }
+    pub fn to_config(&self) -> KnotConfig {
+        KnotConfig::new(self.knot_type(), &self.path, self.credentials.clone())
     }
 
     pub fn adapter_name(&self) -> String {

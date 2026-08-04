@@ -8,6 +8,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::OnceCell;
+use tracing::debug;
 use zstd::decode_all;
 pub mod api;
 pub mod rewriter;
@@ -75,7 +76,7 @@ impl SSHAdapter {
             self.get_bin_path(&session).await?
         };
         let command = format!("{path_to_bin} file {}", subcommand.as_ref());
-        // debug!("Executing remote SSH command: {command}");
+        debug!("Executing remote SSH command: {command}");
         let (code, bytes) = session.call(&command).await?;
         Ok((code, bytes.map(|b| b.to_vec())))
     }
@@ -100,7 +101,7 @@ impl SSHAdapter {
             self.get_bin_path(&session).await?
         };
         let command = format!("{path_to_bin} archive-local {}", subcommand.as_ref());
-        // debug!("Executing remote SSH command: {command}");
+        debug!("Executing remote SSH command: {command}");
         let (code, bytes) = session.call(&command).await?;
         Ok((code, bytes.map(|b| b.to_vec())))
     }

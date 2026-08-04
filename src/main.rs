@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use knot::{
-    cli::{KnotArgs, ModeArgs},
+    cli::{KnotArgs, ModeArgs, modification, subcommands::init},
     configuration::MainConfig,
     knot::manager::KnotManager,
     modes::{
@@ -26,18 +26,32 @@ async fn main() -> Result<()> {
 
     match user_args.mode {
         ModeArgs::Sync { config_path } => {
-            let (main_config, mut knots) = setup(config_path).await?;
-
+            let (main_config, mut knots) = setup(config_path)
+                .await
+                .map_err(|e| anyhow!("Setup failed: {e}"))?;
+            println!("{main_config}");
+            println!("{:?}", main_config.global.ignore_patterns);
             let start_time = Instant::now();
-            let source_fut = knots.source.set_folder(Arc::clone(&main_config));
-            let remotes_fut =
-                KnotManager::update_remotes(&mut knots.remotes, Arc::clone(&main_config));
+            let source_fut = async {
+                knots
+                    .source
+                    .set_folder(Arc::clone(&main_config))
+                    .await
+                    .map_err(|e| anyhow!("Source setup failed: {e}"))
+            };
+            let remotes_fut = async {
+                KnotManager::update_remotes(&mut knots.remotes, Arc::clone(&main_config))
+                    .await
+                    .map_err(|e| anyhow!("Remote update failed: {e}"))
+            };
             tokio::try_join!(source_fut, remotes_fut)?;
             debug!("Update took: {:0.2?}", start_time.elapsed());
-
-            for remote in &knots.remotes {
+            for (index, remote) in knots.remotes.iter().enumerate() {
                 let source = &knots.source;
-                source.sync(remote, Arc::clone(&main_config)).await?;
+                source
+                    .sync(remote, Arc::clone(&main_config))
+                    .await
+                    .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))?;
             }
         }
         ModeArgs::Crawl {
@@ -75,6 +89,11 @@ async fn main() -> Result<()> {
             index,
             config_path,
         } => handle_archiving(actions, index, config_path).await?,
+        ModeArgs::Init => init::configuration()?,
+        ModeArgs::Modify {
+            specific_property,
+            config_path,
+        } => modification::modify(specific_property, config_path)?,
     };
     Ok(())
 }

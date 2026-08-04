@@ -1,4 +1,4 @@
-use crate::{APP_FOLDER, utils::paths::relative_path};
+use crate::{CONFIGURATION_FOLDER, utils::paths::relative_path};
 use anyhow::{Result, anyhow};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, with::AsString};
 use serde::{Deserialize, Serialize};
@@ -11,13 +11,13 @@ use std::{
 pub type CacheMap = HashMap<String, KnotFile>;
 pub type ArchivedCacheMap = <CacheMap as Archive>::Archived;
 pub fn load_cache(folder: &Path) -> Option<HashMap<String, KnotFile>> {
-    let path = folder.join(APP_FOLDER).join("cache");
+    let path = folder.join(CONFIGURATION_FOLDER).join("cache");
     let bytes = std::fs::read(path).ok()?;
     rkyv::from_bytes::<HashMap<String, KnotFile>, rkyv::rancor::Error>(&bytes).ok()
 }
 
 pub fn save_cache(folder: &Path, files: &[KnotFile]) -> Result<()> {
-    let app_dir = folder.join(APP_FOLDER);
+    let app_dir = folder.join(CONFIGURATION_FOLDER);
     if !app_dir.exists() {
         std::fs::create_dir_all(&app_dir)?;
     }

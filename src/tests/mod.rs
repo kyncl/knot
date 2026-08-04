@@ -6,3 +6,6 @@ pub mod file_system;
 
 #[cfg(test)]
 pub mod config_loader;
+
+#[cfg(test)]
+pub mod config_path;

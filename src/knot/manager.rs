@@ -4,8 +4,8 @@ use anyhow::Result;
 use futures::future::try_join_all;
 
 use crate::{
-    configuration::MainConfig,
-    knot::{Knot, file::KnotFile},
+    configuration::{ MainConfig},
+    knot::{Knot, file::KnotFile, remote::RemoteKnot},
     utils::behavior::Behavior,
 };
 
@@ -13,16 +13,6 @@ pub struct KnotManager {
     pub source: Knot,
     pub remotes: Vec<RemoteKnot>,
 }
-pub struct RemoteKnot {
-    pub knot: Knot,
-    pub behavior: Behavior,
-}
-impl RemoteKnot {
-    pub fn new(knot: Knot, behavior: Behavior) -> Self {
-        Self { knot, behavior }
-    }
-}
-
 impl KnotManager {
     pub fn new(source: Knot) -> Self {
         Self {

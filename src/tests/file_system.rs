@@ -29,7 +29,7 @@ async fn cleanup_dir(path: &Path) {
 }
 
 #[tokio::test]
-async fn test_create_and_empty_write_file() -> Result<()> {
+async fn create_and_empty_write_file() -> Result<()> {
     let (knot, dir) = local_setup().await?;
     let file_path = dir.join("test_write.txt");
 
@@ -45,7 +45,7 @@ async fn test_create_and_empty_write_file() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_write_into_file_with_offsets() -> Result<()> {
+async fn write_into_file_with_offsets() -> Result<()> {
     let (knot, dir) = local_setup().await?;
     let file_path = dir.join("test_offset.txt");
 
@@ -69,7 +69,7 @@ async fn test_write_into_file_with_offsets() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_read_at_interval() -> Result<()> {
+async fn read_at_interval() -> Result<()> {
     let (knot, dir) = local_setup().await?;
     let file_path = dir.join("test_interval.txt");
 
@@ -92,7 +92,7 @@ async fn test_read_at_interval() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_empty_file() -> Result<()> {
+async fn empty_file() -> Result<()> {
     let (knot, dir) = local_setup().await?;
     let file_path = dir.join("test_empty.txt");
 
@@ -111,7 +111,7 @@ async fn test_empty_file() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_rename_and_delete() -> Result<()> {
+async fn rename_and_delete() -> Result<()> {
     let (knot, dir) = local_setup().await?;
     let old_path = dir.join("old.txt");
     let new_path = dir.join("new.txt");
@@ -134,7 +134,7 @@ async fn test_rename_and_delete() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_create_and_empty_write() -> Result<()> {
+async fn cli_create_and_empty_write() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let file_path = dir.join("cli_empty_write.txt");
 
@@ -157,7 +157,7 @@ async fn test_cli_create_and_empty_write() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_write_with_offset() -> Result<()> {
+async fn cli_write_with_offset() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let file_path = dir.join("cli_offset.txt");
 
@@ -180,7 +180,7 @@ async fn test_cli_write_with_offset() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_empty_file() -> Result<()> {
+async fn cli_empty_file() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let file_path = dir.join("cli_empty.txt");
 
@@ -199,7 +199,7 @@ async fn test_cli_empty_file() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_rename_and_delete() -> Result<()> {
+async fn cli_rename_and_delete() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let old_path = dir.join("cli_old.txt");
     let new_path = dir.join("cli_new.txt");
@@ -229,7 +229,7 @@ async fn test_cli_rename_and_delete() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_read_interval_and_full() -> Result<()> {
+async fn cli_read_interval_and_full() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let file_path = dir.join("cli_read_test.txt");
 
@@ -252,7 +252,7 @@ async fn test_cli_read_interval_and_full() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_cli_create_dir_and_dirs() -> Result<()> {
+async fn cli_create_dir_and_dirs() -> Result<()> {
     let (_knot, dir) = local_setup().await?;
     let single_dir = dir.join("single_dir");
     let batch_dirs = vec![dir.join("batch_dir_1/nested"), dir.join("batch_dir_2")];
@@ -276,7 +276,7 @@ async fn test_cli_create_dir_and_dirs() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_knot_mkdir_and_mkdir_batch() -> Result<()> {
+async fn knot_mkdir_and_mkdir_batch() -> Result<()> {
     let (knot, dir) = local_setup().await?;
 
     let dir1 = dir.join("knot_dir");

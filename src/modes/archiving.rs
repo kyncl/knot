@@ -1,16 +1,14 @@
-use std::{path::PathBuf, sync::Arc};
-
 use anyhow::{Result, anyhow};
-use colored::*;
-use inquire::Select;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     ARCHIVE_PREFIX,
     cli::{
+        resolvers::remote_indexing::resolve_remote_index,
         subcommands::archiving::ArchiveSubcommand,
         visualization::resolver::{ResolverFiles, resolve_files},
     },
-    knot::{file::KnotFile, file_diffs::FileDiffs, manager::KnotManager},
+    knot::{file::KnotFile, file_diffs::FileDiffs},
     modes::{archiving_local::list_archive, setup::setup, sync::add_unique_files},
     utils::{formatting::parse_human_time, paths::relative_path},
 };
@@ -21,7 +19,7 @@ pub async fn handle_archiving(
     config_path: Option<PathBuf>,
 ) -> Result<()> {
     let (main_config, knots) = setup(config_path).await?;
-    let index = resolve_index(index, &knots)?;
+    let index = resolve_remote_index(index, &knots.remotes)?;
     let chosen = knots
         .remotes
         .get(index)
@@ -256,46 +254,4 @@ pub async fn handle_archiving(
     .await?;
 
     Ok(())
-}
-
-fn resolve_index(index: Option<usize>, knots: &KnotManager) -> Result<usize> {
-    if let Some(idx) = index {
-        if knots.remotes.get(idx).is_some() {
-            Ok(idx)
-        } else {
-            Err(anyhow!("Remote knot index {idx} is out of bounds"))
-        }
-    } else if !knots.remotes.is_empty() {
-        if knots.remotes.len() == 1 {
-            Ok(0)
-        } else {
-            let options: Vec<String> = knots
-                .remotes
-                .iter()
-                .map(|r| {
-                    let k = &r.knot;
-                    let path = k.path.display();
-                    let creds = k.credentials.as_ref().map_or_else(String::new, |c| {
-                        format!(
-                            " ({}//{}@{}:{})",
-                            format!("{:?}", k.knot_type()).green(),
-                            c.username.bold(),
-                            c.host.yellow(),
-                            c.port
-                        )
-                        .dimmed()
-                        .to_string()
-                    });
-
-                    format!("{path}{creds}")
-                })
-                .collect();
-            let ans = Select::new("Pick a remote knot:", options).raw_prompt()?;
-            Ok(ans.index)
-        }
-    } else {
-        Err(anyhow!(
-            "Couldn't find any remote knots. Please add new remote knot or check your configuration"
-        ))
-    }
 }

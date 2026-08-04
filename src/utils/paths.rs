@@ -24,9 +24,10 @@ where
         }
     };
 
-    if cfg!(unix) {
-        path = path.replace("~", &home_dir);
-    } else {
+    if path.starts_with("~") {
+        path = path.replacen("~", &home_dir, 1);
+    }
+    if !cfg!(unix) {
         path = path.replace("%USERPROFILE%", &home_dir);
     }
     Ok(path)

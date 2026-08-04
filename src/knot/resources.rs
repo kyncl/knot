@@ -1,9 +1,14 @@
-use std::{sync::Arc, time::Instant};
+use std::{fs, sync::Arc, time::Instant};
 
 use anyhow::Result;
+use colored::Colorize;
 use tracing::debug;
 
-use crate::{connection::ssh::pool::SSHPool, knot::credentials::KnotCredentials};
+use crate::{
+    cli::modification::knot_config::prompt_path,
+    connection::ssh::pool::SSHPool,
+    knot::{adapters::ssh::api::upload_and_prepare_server, credentials::KnotCredentials},
+};
 
 #[derive(Default)]
 pub struct KnotResourcers {
@@ -21,7 +26,7 @@ impl KnotResourcers {
 
     pub async fn ssh(mut self, credentials: &KnotCredentials, pool_size: usize) -> Result<Self> {
         let now = Instant::now();
-        let pool = SSHPool::new(credentials, pool_size).await?;
+        let pool = Arc::new(SSHPool::new(credentials, pool_size).await?);
         debug!(
             "Creating SSH pool with size {pool_size} took: {:.2?}",
             now.elapsed()
@@ -34,12 +39,32 @@ impl KnotResourcers {
         {
             "knot"
         } else {
+            if let Ok((code, _)) = session.call("./.local/bin/knot -V").await
+                && code == 127
+            {
+                let long_part =
+                    "Knot can transfer it for you. Just point to the file. Works only on";
+                let spacing = " ".repeat(long_part.len() - 52);
+                let path = prompt_path(
+                    true,
+                    true,
+                    None,
+                    Some(&format!(
+                        "Hmm it seems your remote device doesn't have knot binary.{}]\n[{} {}",
+                        spacing,
+                        long_part,
+                        "Unix".underline()
+                    )),
+                )?;
+                let data = fs::read(path)?;
+                upload_and_prepare_server(Arc::clone(&pool), &data).await?;
+            }
             "./.local/bin/knot"
         };
         debug!("Checking version of app took: {:.2?}", now.elapsed());
 
         self.ssh_executable = Some(bin.to_string());
-        self.ssh = Some(Arc::new(pool));
+        self.ssh = Some(pool);
         Ok(self)
     }
 }

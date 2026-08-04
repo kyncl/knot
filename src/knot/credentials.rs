@@ -1,10 +1,43 @@
+use anyhow::Result;
+use inquire::Password;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use strum::Display;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, Display)]
 #[serde(tag = "type")]
+pub enum SavedAuthMethod {
+    Password,
+    PrivateKey {
+        key_path: PathBuf,
+        cert_path: Option<PathBuf>,
+    },
+    #[default]
+    None,
+}
+impl SavedAuthMethod {
+    /// Resolves persistent auth settings into runtime credentials
+    /// Prompting the user for a password if required
+    pub fn to_runtime_auth(&self) -> Result<AuthMethod> {
+        match self {
+            SavedAuthMethod::Password => {
+                let pass = Password::new("Password:").prompt()?;
+                Ok(AuthMethod::Password(pass))
+            }
+            SavedAuthMethod::PrivateKey {
+                key_path,
+                cert_path,
+            } => Ok(AuthMethod::PrivateKey {
+                key_path: key_path.clone(),
+                cert_path: cert_path.clone(),
+            }),
+            SavedAuthMethod::None => Ok(AuthMethod::None),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub enum AuthMethod {
-    #[serde(skip)]
     Password(String),
     PrivateKey {
         key_path: PathBuf,
@@ -20,7 +53,10 @@ pub struct KnotCredentials {
     pub username: String,
     pub host: String,
     pub port: u16,
+    #[serde(skip)]
     pub auth: AuthMethod,
+    #[serde(rename = "authentication")]
+    pub config_auth: SavedAuthMethod,
     /// Number of allowed connections for knot
     /// Why here? Because it's more convenient
     /// With this Knot::new doesn't need new parameter `connection_limit` just

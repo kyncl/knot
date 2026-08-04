@@ -16,7 +16,7 @@ use tracing::debug;
 use crate::{
     STABLE_CHANNELS_PER_SESSION,
     configuration::MainConfig,
-    knot::{Knot, file::KnotFile, file_diffs::FileDiffs, manager::RemoteKnot},
+    knot::{Knot, file::KnotFile, file_diffs::FileDiffs, remote::RemoteKnot},
     utils::behavior::{ConflictBehavior, UniqueBehavior},
 };
 
