@@ -121,12 +121,12 @@ pub fn configuration() -> Result<()> {
     let mut path_to_save = if save_it {
         PathBuf::from(format!("./{CONFIGURATION_FOLDER}"))
     } else {
-        PathBuf::from(prompt_path(
+        prompt_path(
             true,
             false,
             None,
             Some("Folder, where all configuration files will live in"),
-        )?)
+        )?
     };
     path_to_save = PathBuf::from(convert_home_path(&path_to_save, None)?);
     fs::create_dir_all(&path_to_save)?;
@@ -136,23 +136,21 @@ pub fn configuration() -> Result<()> {
         println!("Saved Main Configuration into {file_path:?}");
     }
 
-    if !loader.ignore_patterns().trim().is_empty() {
-        if let Some(file_path) =
+    if !loader.ignore_patterns().trim().is_empty()
+        && let Some(file_path) =
             resolve_save_path(&path_to_save, IGNORE_PATTERNS_FILE, "Ignore Patterns")?
         {
             loader.save_ignore_patterns(&file_path)?;
             println!("Saved Ignore Patterns into {file_path:?}");
         }
-    }
 
-    if !remote_knots_loader.knots.is_empty() {
-        if let Some(file_path) =
+    if !remote_knots_loader.knots.is_empty()
+        && let Some(file_path) =
             resolve_save_path(&path_to_save, KNOTS_CONFIGURATION, "Remote Knots")?
         {
             remote_knots_loader.save(&file_path)?;
             println!("Saved Remote Knots into {file_path:?}");
         }
-    }
     Ok(())
 }
 

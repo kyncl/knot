@@ -12,7 +12,7 @@ impl ProvidesRemoteConfig for RemoteKnot {
     fn get_config(&self) -> RemoteKnotConfig {
         RemoteKnotConfig {
             config: self.knot.to_config(),
-            behavior: self.behavior.clone(),
+            behavior: self.behavior,
         }
     }
 }

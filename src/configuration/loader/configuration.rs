@@ -70,9 +70,7 @@ impl ConfigurationLoader {
             "".to_string()
         };
         let git = if !data.contains(".git") {
-            format!(
-                "# .git folder is quite chunky and most of the time it's not wanted to be transferred\n.git",
-            )
+            "# .git folder is quite chunky and most of the time it's not wanted to be transferred\n.git".to_string()
         } else {
             "".to_string()
         };
