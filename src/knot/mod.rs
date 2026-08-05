@@ -107,7 +107,7 @@ impl Knot {
         // Making sure that every knot has it's auth set from configuration
         let mut credentials = credentials;
         if let Some(cred) = &mut credentials {
-            cred.auth = SavedAuthMethod::to_runtime_auth(&cred.config_auth)?;
+            cred.auth = SavedAuthMethod::to_runtime_auth(&cred.config_auth, &cred)?;
         }
 
         // If user has remote connection to server that is running MacOS and will use '~'

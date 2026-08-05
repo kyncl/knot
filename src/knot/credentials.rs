@@ -1,8 +1,11 @@
 use anyhow::Result;
-use inquire::Password;
+use inquire::{Confirm, Password};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use strum::Display;
+use tracing::warn;
+
+use crate::utils::password::{get_password, save_password_new};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, Display)]
 #[serde(tag = "type")]
@@ -18,10 +21,27 @@ pub enum SavedAuthMethod {
 impl SavedAuthMethod {
     /// Resolves persistent auth settings into runtime credentials
     /// Prompting the user for a password if required
-    pub fn to_runtime_auth(&self) -> Result<AuthMethod> {
+    pub fn to_runtime_auth(&self, credentials: &KnotCredentials) -> Result<AuthMethod> {
         match self {
             SavedAuthMethod::Password => {
-                let pass = Password::new("Password:").prompt()?;
+                let status = get_password(credentials);
+                if let Err(err) = &status {
+                    warn!("Couldn't get password. Cause: {err}");
+                }
+                let pass = if let Ok(password) = status {
+                    password
+                } else {
+                    let msg = format!(" Password for '{}:{}'", credentials.host, credentials.port);
+                    let p = Password::new(&msg).prompt()?;
+                    if Confirm::new("Do you want to save this password into keyring?")
+                        .with_default(false)
+                        .prompt()?
+                        && let Err(err) = save_password_new(credentials, &p)
+                    {
+                        eprintln!("Failed to save password. Cause: {err}");
+                    }
+                    p
+                };
                 Ok(AuthMethod::Password(pass))
             }
             SavedAuthMethod::PrivateKey {

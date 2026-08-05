@@ -70,4 +70,7 @@ pub enum KnotModifySubcommand {
 
     /// Behavior of remote knot on unique files
     UniqueBehavior,
+
+    /// Rewrite/Delete your password
+    Password,
 }

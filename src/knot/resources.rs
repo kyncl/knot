@@ -37,6 +37,7 @@ impl KnotResourcers {
         let bin = if let Ok((code, _)) = session.call("knot -V").await
             && code == 0
         {
+            drop(session);
             "knot"
         } else {
             if let Ok((code, _)) = session.call("./.local/bin/knot -V").await
@@ -57,6 +58,7 @@ impl KnotResourcers {
                     )),
                 )?;
                 let data = fs::read(path)?;
+                drop(session);
                 upload_and_prepare_server(Arc::clone(&pool), &data).await?;
             }
             "./.local/bin/knot"

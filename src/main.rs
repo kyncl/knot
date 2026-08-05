@@ -1,5 +1,6 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
+use futures::future;
 use knot::{
     cli::{KnotArgs, ModeArgs, modification, subcommands::init},
     configuration::MainConfig,
@@ -8,6 +9,7 @@ use knot::{
         archiving::handle_archiving, archiving_local::handle_local_archiving, crawl::crawl,
         file::handle_files, setup::setup,
     },
+    utils::{notifications::send_notification, shell_complete::generate_shell_complete},
 };
 use parse_size::parse_size;
 use std::{sync::Arc, time::Instant};
@@ -25,7 +27,10 @@ async fn main() -> Result<()> {
     let user_args = KnotArgs::parse();
 
     match user_args.mode {
-        ModeArgs::Sync { config_path } => {
+        ModeArgs::Sync {
+            config_path,
+            notifications,
+        } => {
             let (main_config, mut knots) = setup(config_path)
                 .await
                 .map_err(|e| anyhow!("Setup failed: {e}"))?;
@@ -46,12 +51,43 @@ async fn main() -> Result<()> {
             };
             tokio::try_join!(source_fut, remotes_fut)?;
             debug!("Update took: {:0.2?}", start_time.elapsed());
-            for (index, remote) in knots.remotes.iter().enumerate() {
+
+            let sync_fut = knots.remotes.iter().enumerate().map(|(index, remote)| {
                 let source = &knots.source;
-                source
-                    .sync(remote, Arc::clone(&main_config))
-                    .await
-                    .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))?;
+
+                let config_clone = Arc::clone(&main_config);
+                async move {
+                    source
+                        .sync(remote, config_clone)
+                        .await
+                        .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
+                }
+            });
+
+            let statuses = future::join_all(sync_fut).await;
+            let status_len = statuses.len();
+
+            if notifications {
+                let mut error_happened = 0;
+                let mut error_msgs = String::new();
+
+                for status in statuses {
+                    if let Err(err) = status {
+                        error_happened += 1;
+                        error_msgs.push_str(&format!("{err}\n"));
+                    }
+                }
+
+                if error_happened == 0 {
+                    send_notification(
+                        "Successful synchronization",
+                        "All knots were successfully synchronized",
+                    );
+                } else if error_happened == status_len {
+                    send_notification("Synchronization fully failed", error_msgs);
+                } else {
+                    send_notification("Partial failed synchronization", error_msgs);
+                }
             }
         }
         ModeArgs::Crawl {
@@ -88,12 +124,31 @@ async fn main() -> Result<()> {
             actions,
             index,
             config_path,
-        } => handle_archiving(actions, index, config_path).await?,
+            notifications,
+        } => {
+            let status = handle_archiving(actions, index, config_path).await;
+            if notifications {
+                if let Err(err) = status {
+                    send_notification(
+                        "Archiving failed",
+                        &format!("Archiving actions failed. Cause: {err}"),
+                    );
+                } else {
+                    send_notification(
+                        "Successful archiving",
+                        "All archiving actions were successfully finished",
+                    );
+                }
+            } else {
+                status?;
+            }
+        }
         ModeArgs::Init => init::configuration()?,
         ModeArgs::Modify {
             specific_property,
             config_path,
         } => modification::modify(specific_property, config_path)?,
+        ModeArgs::Complete { shell } => generate_shell_complete(shell)?,
     };
     Ok(())
 }

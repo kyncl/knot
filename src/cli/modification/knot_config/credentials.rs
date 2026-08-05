@@ -1,5 +1,5 @@
 use anyhow::Result;
-use inquire::{Confirm, CustomType, Select, Text};
+use inquire::{Confirm, CustomType, Password, Select, Text};
 use std::{fmt::Debug, path::PathBuf};
 use tracing::debug;
 
@@ -87,6 +87,9 @@ pub fn prompt_username() -> Result<String> {
 pub fn prompt_host() -> Result<String> {
     Text::new("Host/IP:").prompt().map_err(Into::into)
 }
+pub fn prompt_password() -> Result<String> {
+    Password::new("Password").prompt().map_err(Into::into)
+}
 
 pub fn prompt_port() -> Result<u16> {
     CustomType::<u16>::new("Enter port number:")
@@ -114,13 +117,10 @@ pub fn prompt_auth() -> Result<(AuthMethod, SavedAuthMethod)> {
     .prompt()?;
 
     match auth_choice {
-        "Password" => {
-            // let pass = Password::new("Password:").prompt()?;
-            Ok((
-                AuthMethod::Password("password :P".to_string()),
-                SavedAuthMethod::Password,
-            ))
-        }
+        "Password" => Ok((
+            AuthMethod::Password("password :P".to_string()),
+            SavedAuthMethod::Password,
+        )),
         "Private Key" => {
             let key_str = Text::new("Private Key path:")
                 .with_placeholder("~/.ssh/id_rsa")

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use inquire::Password;
 use russh::keys::ssh_encoding::bytes::Bytes;
 use russh::keys::*;
 use russh::*;
@@ -88,7 +89,12 @@ impl Session {
                 }
             }
             AuthMethod::PrivateKey { key_path, .. } => {
-                let key_pair = load_secret_key(key_path, None)?;
+                let key_pair = if let Ok(key) = load_secret_key(key_path, None) {
+                    key
+                } else {
+                    let msg = &format!("Enter passphrase for key '{}':", key_path.display());
+                    load_secret_key(key_path, Some(&Password::new(msg).prompt()?))?
+                };
                 let arc_key = Arc::new(key_pair);
 
                 let auth_res = if let Some(cert) = openssh_cert {

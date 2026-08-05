@@ -263,7 +263,7 @@ async fn handle_remove(target: &Path, older_than: Option<&str>) -> Result<()> {
     let should_delete = if let Some(older_than) = older_than {
         let metadata = tokio::fs::metadata(target).await?;
         let file_time = metadata
-            .created()
+            .modified()
             .or_else(|_| metadata.modified())?
             .duration_since(UNIX_EPOCH)?
             .as_secs() as i64;

@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 use std::path::PathBuf;
 use strum::Display;
 
@@ -30,6 +31,10 @@ pub enum ModeArgs {
         /// Path to the configuration file or workspace folder
         #[arg(short, long)]
         config_path: Option<PathBuf>,
+
+        /// Sends notification about the synchronization process
+        #[arg(short, long)]
+        notifications: bool,
     },
 
     /// Initialize your configuration file with comfy CLI
@@ -65,6 +70,10 @@ pub enum ModeArgs {
         /// Path to the configuration file or project workspace folder
         #[arg(short, long)]
         config_path: Option<PathBuf>,
+
+        /// Sends notification about the archiving process
+        #[arg(short, long)]
+        notifications: bool,
     },
 
     /// Scan a directory and inspect its file structure
@@ -102,6 +111,40 @@ pub enum ModeArgs {
     File {
         #[command(subcommand)]
         cmd: FileSubcommand,
+    },
+
+    /// Generate shell completion scripts
+    #[command(long_about = r#"
+Generate shell completion scripts for Knot
+
+To enable autocompletion, you must generate the script and put it in the correct
+directory for your shell. Here are the standard commands to do this:
+
+BASH:
+    mkdir -p ~/.local/share/bash-completion/completions
+    knot complete bash > ~/.local/share/bash-completion/completions/knot
+
+ZSH:
+    mkdir -p ~/.zsh/completions
+    knot complete zsh > ~/.zsh/completions/_knot
+    # Note: You must also add the following lines to your ~/.zshrc BEFORE compinit:
+    # fpath=(~/.zsh/completions $fpath)
+
+FISH:
+    mkdir -p ~/.config/fish/completions
+    knot complete fish > ~/.config/fish/completions/knot.fish
+
+ELVISH
+    mkdir -p ~/.config/elvish/lib
+    knot complete elvish > ~/.config/elvish/lib/knot.elv
+
+POWERSHELL:
+    knot complete powershell | Out-String | Invoke-Expression
+    # Note: To make this permanent, add the command above to your PowerShell $PROFILE
+"#)]
+    Complete {
+        #[arg(value_enum)]
+        shell: Option<Shell>,
     },
 }
 

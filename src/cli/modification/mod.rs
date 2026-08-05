@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};
+use inquire::Select;
 
 use crate::{
     IGNORE_PATTERNS_FILE, KNOTS_CONFIGURATION,
@@ -12,7 +13,7 @@ use crate::{
                 behavior::{prompt_conflict_behavior, prompt_unique_behavior},
                 credentials::{
                     prompt_auth, prompt_connection_limit, prompt_host, prompt_knot_credentials,
-                    prompt_port, prompt_username,
+                    prompt_password, prompt_port, prompt_username,
                 },
                 prompt_knot_type, prompt_path,
             },
@@ -24,7 +25,10 @@ use crate::{
     configuration::loader::{configuration::ConfigurationLoader, remote::RemoteKnotLoader},
     knot::{KnotConfig, KnotType, credentials::KnotCredentials},
     modes::setup::resolve_config_paths,
-    utils::behavior::Behavior,
+    utils::{
+        behavior::Behavior,
+        password::{delete_password, save_password_new},
+    },
 };
 
 pub mod features;
@@ -174,6 +178,19 @@ fn handle_knot_property(
                 behavior.conflicts = prompt_conflict_behavior()?;
             } else {
                 return Err(anyhow!("You cannot change on source knot behavior!"));
+            }
+        }
+        KnotModifySubcommand::Password => {
+            let choice =
+                Select::new("What to do with password", vec!["Rewrite", "Delete"]).prompt()?;
+            if let Some(cred) = &knot.credentials {
+                if choice == "Rewrite" {
+                    save_password_new(cred, &prompt_password()?)?;
+                    println!("Password was rewritten successfully");
+                } else if choice == "Delete" {
+                    delete_password(cred)?;
+                    println!("Password was deleted successfully");
+                }
             }
         }
     }

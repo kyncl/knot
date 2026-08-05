@@ -1,7 +1,11 @@
 pub mod behavior;
 pub mod compression;
+pub mod crypto;
 pub mod formatting;
+pub mod notifications;
+pub mod password;
 pub mod paths;
+pub mod shell_complete;
 pub mod toml;
 
 use std::collections::HashSet;

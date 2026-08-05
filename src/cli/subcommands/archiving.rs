@@ -32,7 +32,7 @@ pub enum ArchiveSubcommand {
 
         /// Prune archives older than the specified duration (e.g., "30d", "2w")
         ///
-        /// Evaluates local files by creation time, but remote files by modified time.
+        /// Evaluates files by modified time
         #[arg(long)]
         older_than: Option<String>,
 
