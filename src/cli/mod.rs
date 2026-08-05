@@ -37,25 +37,6 @@ pub enum ModeArgs {
         notifications: bool,
     },
 
-    /// Initialize your configuration file with comfy CLI
-    Init,
-
-    /// Modify specific property of configuration
-    Modify {
-        #[command(subcommand)]
-        specific_property: ModifySubcommand,
-
-        /// Path to the configuration file or workspace folder
-        #[arg(short, long)]
-        config_path: Option<PathBuf>,
-    },
-
-    /// Manage local archive files
-    ArchiveLocal {
-        #[command(subcommand)]
-        actions: ArchiveSubcommand,
-    },
-
     /// Transfer and manage archives between knots
     Archive {
         #[command(subcommand)]
@@ -74,6 +55,36 @@ pub enum ModeArgs {
         /// Sends notification about the archiving process
         #[arg(short, long)]
         notifications: bool,
+    },
+
+    /// Continuously monitor local directory trees and automatically sync changes
+    Daemon {
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+
+        /// Send desktop notifications whenever a sync completes or fails
+        #[arg(short, long)]
+        notifications: bool,
+    },
+
+    /// Initialize your configuration file with comfy CLI
+    Init,
+
+    /// Modify specific property of configuration
+    Modify {
+        #[command(subcommand)]
+        specific_property: ModifySubcommand,
+
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
+
+    /// Manage local archive files
+    ArchiveLocal {
+        #[command(subcommand)]
+        actions: ArchiveSubcommand,
     },
 
     /// Scan a directory and inspect its file structure

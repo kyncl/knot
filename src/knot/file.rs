@@ -37,7 +37,9 @@ pub fn save_cache(folder: &Path, files: &[KnotFile]) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+#[derive(
+    Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize, PartialEq, Eq,
+)]
 pub struct KnotFile {
     #[rkyv(with = AsString)]
     pub path: PathBuf,
