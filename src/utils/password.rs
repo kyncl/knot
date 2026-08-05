@@ -12,7 +12,7 @@ use crate::{
 fn get_service_name(credentials: &KnotCredentials) -> String {
     let hash = Sha256::digest(format!(
         "{}@{}:{}",
-        credentials.username, &credentials.host, &credentials.port
+        credentials.username, credentials.host, credentials.port
     ));
 
     let mut service_name = String::with_capacity(69);
@@ -28,7 +28,7 @@ pub fn get_password(credentials: &KnotCredentials) -> Result<String> {
     let service = get_service_name(credentials);
     let user = &credentials.username;
     let entry = Entry::new(&service, user)?;
-    Ok(decrypt_password(&entry.get_password()?)?)
+    decrypt_password(&entry.get_password()?)
 }
 
 pub fn save_password_new(credentials: &KnotCredentials, password: &str) -> Result<()> {

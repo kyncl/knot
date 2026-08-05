@@ -131,7 +131,7 @@ async fn main() -> Result<()> {
                 if let Err(err) = status {
                     send_notification(
                         "Archiving failed",
-                        &format!("Archiving actions failed. Cause: {err}"),
+                        format!("Archiving actions failed. Cause: {err}"),
                     );
                 } else {
                     send_notification(
