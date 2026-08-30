@@ -38,7 +38,12 @@ pub fn get_dynamic_io_limit_single(knot: &Knot) -> usize {
     }
 }
 
-pub async fn sync(source: &Knot, remote: &RemoteKnot, config: Arc<MainConfig>) -> Result<()> {
+pub async fn sync(
+    source: &Knot,
+    remote: &RemoteKnot,
+    config: Arc<MainConfig>,
+    non_interactive: bool,
+) -> Result<()> {
     let remote_k = &remote.knot;
     let diff = source.difference(&remote.knot);
     if diff.source_unique.is_empty()
@@ -49,7 +54,10 @@ pub async fn sync(source: &Knot, remote: &RemoteKnot, config: Arc<MainConfig>) -
         println!("Directories are synchronized!");
         return Ok(());
     }
-    diff.visualization();
+
+    if !non_interactive {
+        diff.visualization();
+    }
     let behavior = &remote.behavior;
     let compress = config.features.compress;
     let now = Instant::now();

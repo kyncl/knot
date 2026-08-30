@@ -43,6 +43,7 @@ impl<'de> Deserialize<'de> for UniqueBehavior {
             "ask" => Ok(UniqueBehavior::Ask),
             "skip" => Ok(UniqueBehavior::Skip),
             "onlyadd" => Ok(UniqueBehavior::OnlyAdd),
+            "addonly" => Ok(UniqueBehavior::OnlyAdd),
             _ => Err(de::Error::unknown_variant(
                 &s,
                 &[

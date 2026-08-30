@@ -33,6 +33,7 @@ async fn main() -> Result<()> {
         ModeArgs::Sync {
             config_path,
             notifications,
+            non_interactive,
         } => {
             let (main_config, mut knots) = setup(config_path)
                 .await
@@ -40,7 +41,7 @@ async fn main() -> Result<()> {
             println!("{main_config}");
             println!("{:?}", main_config.global.ignore_patterns);
 
-            let statuses = main_sync(&mut knots, main_config, None).await?;
+            let statuses = main_sync(&mut knots, main_config, None, non_interactive).await?;
             if notifications {
                 handle_sync_notifications(&statuses);
             }
@@ -48,11 +49,14 @@ async fn main() -> Result<()> {
         ModeArgs::Daemon {
             config_path,
             notifications,
+            interactive,
         } => {
             let (main_config, mut knots) = setup(config_path)
                 .await
                 .map_err(|e| anyhow!("Setup failed: {e}"))?;
-            let statuses = main_sync(&mut knots, Arc::clone(&main_config), None).await?;
+            // Makes more sense that the daemon synchronization is no TUI by default
+            let statuses =
+                main_sync(&mut knots, Arc::clone(&main_config), None, !interactive).await?;
             if notifications {
                 handle_sync_notifications(&statuses);
             }
@@ -72,8 +76,13 @@ async fn main() -> Result<()> {
                     last_crawled = new_crawled;
                 } else if changes_detected {
                     println!("Syncing...");
-                    let statuses =
-                        main_sync(&mut knots, Arc::clone(&main_config), Some(new_crawled)).await?;
+                    let statuses = main_sync(
+                        &mut knots,
+                        Arc::clone(&main_config),
+                        Some(new_crawled),
+                        !interactive,
+                    )
+                    .await?;
                     if notifications {
                         handle_sync_notifications(&statuses);
                     }
@@ -150,6 +159,7 @@ async fn main_sync(
     knots: &mut KnotManager,
     main_config: Arc<MainConfig>,
     source_files: Option<Vec<KnotFile>>,
+    non_interactive: bool,
 ) -> Result<Vec<Result<()>>> {
     let start_time = Instant::now();
     let source_fut = async {
@@ -178,7 +188,7 @@ async fn main_sync(
         let config_clone = Arc::clone(&main_config);
         async move {
             source
-                .sync(remote, config_clone)
+                .sync(remote, config_clone, non_interactive)
                 .await
                 .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
         }

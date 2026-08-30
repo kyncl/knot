@@ -28,7 +28,7 @@ pub const REMOTE_CONFIG_HELP_INFO: &str = r#"# === CONFIGURATION INFO ===
 #       - MirrorRemote
 #       - Ask
 #       - Skip
-#       - OnlyAdd
+#       - OnlyAdd (Supports also inverse `AddOnly`)
 
 "#;
 

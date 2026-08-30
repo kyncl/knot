@@ -288,8 +288,13 @@ impl Knot {
             .await
     }
 
-    pub async fn sync(&self, foreign: &RemoteKnot, config: Arc<MainConfig>) -> Result<()> {
-        sync(self, foreign, config).await
+    pub async fn sync(
+        &self,
+        foreign: &RemoteKnot,
+        config: Arc<MainConfig>,
+        non_interactive: bool,
+    ) -> Result<()> {
+        sync(self, foreign, config, non_interactive).await
     }
 
     /// TODO: This function should be separated into adapters

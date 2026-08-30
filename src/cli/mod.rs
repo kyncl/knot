@@ -32,6 +32,10 @@ pub enum ModeArgs {
         #[arg(short, long)]
         config_path: Option<PathBuf>,
 
+        /// Disable interactive TUI prompts (useful for scripts and CI/CD pipelines)
+        #[arg(short = 'i', long)]
+        non_interactive: bool,
+
         /// Sends notification about the synchronization process
         #[arg(short, long)]
         notifications: bool,
@@ -62,6 +66,10 @@ pub enum ModeArgs {
         /// Path to the configuration file or workspace folder
         #[arg(short, long)]
         config_path: Option<PathBuf>,
+
+        /// Shows interactive TUI prompts
+        #[arg(short = 'i', long)]
+        interactive: bool,
 
         /// Send desktop notifications whenever a sync completes or fails
         #[arg(short, long)]
