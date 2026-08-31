@@ -1,0 +1,17 @@
+getting-started
+knots-and-their-types
+configuration
+    general-configuration
+    knot-configuration
+knot modes
+    synchronization
+    initialization
+    archiving
+    daemon
+    modification
+knot modes/internal modes
+    crawl
+    file-system
+    local-archive
+shell-completion
+roadmap
