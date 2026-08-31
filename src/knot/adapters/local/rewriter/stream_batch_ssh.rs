@@ -62,12 +62,14 @@ where
 
         let mut local_file = tokio::fs::File::open(&file.path).await?;
         let metadata = local_file.metadata().await?;
-        let file_mode = if cfg!(unix) {
+        #[cfg(unix)]
+        let file_mode = {
             use std::os::unix::fs::PermissionsExt;
             metadata.permissions().mode()
-        } else {
-            0o644
         };
+
+        #[cfg(not(unix))]
+        let file_mode = 0o644;
 
         file_read_buf.clear();
         local_file.read_to_end(&mut file_read_buf).await?;
