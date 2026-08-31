@@ -42,6 +42,11 @@ doesn't work on windows servers through SSH. Right now this project isn't at sta
 
 Thanks and have fun <3.
 
+# Documentation
+If you need to check out documentation, you can! It's safe inside [docs](https://github.com/kyncl/knot/tree/main/docs) folder. 
+
+The whole documentation is made by [Vault](https://github.com/kyncl/vault).
+
 # License & Commercial Use
 Knot is licensed under the **GPLv3**. 
 
