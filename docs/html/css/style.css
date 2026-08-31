@@ -1,0 +1,17 @@
+/*
+ *  Here can live your custom styles and font-faces
+*/
+
+.homepage-header {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    align-items: center;
+
+}
+
+@media (max-width: 350px) {
+    .homepage-header {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,168 @@
+:root {
+    --background: #ffffff;
+    --card-bg: #f4f4f5;
+    --border: #e4e4e7;
+    --accent: #e4e4e7;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #121212;
+        --card-bg: #1e1e1e;
+        --border: #2c2c2c;
+        --accent: #2c2c2c;
+    }
+}
+
+/* --- Background Theme: Standard (Balanced Dark) --- */
+[data-background-theme="standard"] {
+    --background: #ffffff;
+    --card-bg: #f4f4f5;
+    --border: #e4e4e7;
+    --accent: #e4e4e7;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="standard"] {
+        --background: #121212;
+        --card-bg: #1e1e1e;
+        --border: #2c2c2c;
+        --accent: #2c2c2c;
+    }
+}
+
+/* --- Background Theme: Comfy (Soft Dark Gray) --- */
+[data-background-theme="comfy"] {
+    --background: #f4f4f5;
+    --card-bg: #ffffff;
+    --border: #e4e4e7;
+    --accent: #e4e4e7;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="comfy"] {
+        --background: #18181b;
+        --card-bg: #27272a;
+        --border: #3f3f46;
+        --accent: #3f3f46;
+    }
+}
+
+/* --- Background Theme: Deep Black (High Contrast Light / Pure Black) --- */
+[data-background-theme="deep-black"] {
+    --background: #ffffff;
+    --card-bg: #ffffff;
+    --border: #d4d4d8;
+    --accent: #d4d4d8;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="deep-black"] {
+        --background: #000000;
+        --card-bg: #0d0d0d;
+        --border: #222222;
+        --accent: #222222;
+    }
+}
+
+/* --- Background Theme: Zen (Warm Paper Light / Medium Charcoal) --- */
+[data-background-theme="zen"] {
+    --background: #faf9f6;
+    --card-bg: #ffffff;
+    --border: #e8e6e1;
+    --accent: #e8e6e1;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="zen"] {
+        --background: #1f1f1f;
+        --card-bg: #303030;
+        --border: #444444;
+        --accent: #444444;
+    }
+}
+
+/* --- Background Theme: Stone (Warm Brown-Gray) --- */
+[data-background-theme="stone"] {
+    --background: #fafaf9;
+    --card-bg: #ffffff;
+    --border: #e7e5e4;
+    --accent: #e7e5e4;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="stone"] {
+        --background: #1c1917;
+        --card-bg: #292524;
+        --border: #44403c;
+        --accent: #44403c;
+    }
+}
+
+/* --- Background Theme: Mauve (Purple-Tinted Gray) --- */
+[data-background-theme="mauve"] {
+    --background: #fbf9fa;
+    --card-bg: #ffffff;
+    --border: #f0e6ee;
+    --accent: #f0e6ee;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="mauve"] {
+        --background: #1d161e;
+        --card-bg: #291f2b;
+        --border: #3d2c40;
+        --accent: #3d2c40;
+    }
+}
+
+/* --- Background Theme: Olive (Green-Tinted Gray) --- */
+[data-background-theme="olive"] {
+    --background: #fafaf8;
+    --card-bg: #ffffff;
+    --border: #eaeae2;
+    --accent: #eaeae2;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="olive"] {
+        --background: #1d1d16;
+        --card-bg: #2a2a20;
+        --border: #3f3f31;
+        --accent: #3f3f31;
+    }
+}
+
+/* --- Background Theme: Mist (Blue-Cyan Tinted Gray) --- */
+[data-background-theme="mist"] {
+    --background: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --accent: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="mist"] {
+        --background: #161b1d;
+        --card-bg: #1e2427;
+        --border: #2b3539;
+        --accent: #2b3539;
+    }
+}
+
+/* --- Background Theme: Taupe (Reddish-Warm Gray) --- */
+[data-background-theme="taupe"] {
+    --background: #faf9f8;
+    --card-bg: #ffffff;
+    --border: #ede7e3;
+    --accent: #ede7e3;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-background-theme="taupe"] {
+        --background: #1d1816;
+        --card-bg: #2a2220;
+        --border: #3f3531;
+        --accent: #3f3531;
+    }
+}

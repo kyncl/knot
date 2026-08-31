@@ -1,0 +1,233 @@
+/* =================================================================
+   1. Global Resets & Layout Base
+   ================================================================ */
+* {
+    box-sizing: border-box;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr) 240px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "header header header"
+        "sidebar content toc"
+        "footer footer footer";
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+}
+
+
+/* =================================================================
+   2. Typography & Headings
+   ================================================================ */
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-code);
+    font-weight: 600;
+    color: var(--foreground);
+    scroll-margin-top: 2rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-top: 0;
+}
+
+h2 {
+    font-size: 1.75rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-top: 2.5rem;
+}
+
+p {
+    font-size: 1.05rem;
+    opacity: 0.9;
+}
+
+
+/* =================================================================
+   3. General Link Styling
+   ================================================================ */
+a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-underline-offset: 4px;
+    transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+main a {
+    transition: 400ms;
+    color: var(--main);
+    text-decoration: underline;
+}
+
+a:hover {
+    transition: 250ms;
+    color: var(--main-alt);
+    text-decoration-color: var(--main-alt);
+}
+
+
+/* =================================================================
+   4. Code Blocks & Inline Code
+   ================================================================ */
+pre,
+code {
+    font-family: var(--font-code);
+}
+
+p code,
+li code,
+td code,
+blockquote code {
+    transition: 400ms;
+    white-space: nowrap;
+    font-size: 0.85em;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--radius-sm);
+    color: var(--main-alt);
+}
+
+pre {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin: 2rem 0;
+    overflow-x: auto;
+    position: relative;
+}
+
+pre code {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    font-size: 0.875rem;
+    color: var(--foreground);
+}
+
+
+/* =================================================================
+   5. Tables
+   ================================================================ */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+th {
+    background-color: var(--accent);
+    color: var(--foreground);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--foreground);
+    opacity: 0.9;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+/* =================================================================
+   6. Task Lists & Checkboxes
+   ================================================================ */
+
+ul:has(> li input[type="checkbox"]),
+.contains-task-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+li:has(> input[type="checkbox"]),
+.task-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+    flex-wrap: wrap;
+}
+
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    margin-top: 0.2rem;
+
+    background-color: transparent;
+    border: 2px solid var(--muted);
+    border-radius: var(--radius-sm, 4px);
+
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+    transition: background-color 250ms ease, border-color 250ms ease, box-shadow 250ms ease;
+}
+
+input[type="checkbox"]:hover:not(:disabled) {
+    border-color: var(--main);
+}
+
+input[type="checkbox"]:focus-visible {
+    outline: none;
+    border-color: var(--main);
+    box-shadow: 0 0 0 2px rgba(var(--main), 0.15);
+}
+
+input[type="checkbox"]::before {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    background-color: var(--foreground);
+    transform: scale(0);
+    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--main-alt);
+    border-color: var(--main-alt);
+}
+
+input[type="checkbox"]:checked::before {
+    transform: scale(1);
+}
+
+input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+li:has(> input[type="checkbox"]:checked) {
+    color: var(--muted);
+    text-decoration: line-through;
+    transition: color 250ms ease;
+}

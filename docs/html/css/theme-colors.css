@@ -1,0 +1,302 @@
+/* --- Theme 1: Crimson (Default) --- */
+:root,
+[data-theme="crimson"] {
+    --main: oklch(63.7% 0.237 25.331);
+    --main-alt: oklch(53.7% 0.237 25.331);
+    --active-bg: oklch(63.7% 0.237 25.331 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root,
+    [data-theme="crimson"] {
+        --main: oklch(69.7% 0.237 25.331);
+        --main-alt: oklch(79.7% 0.237 25.331);
+        --active-bg: oklch(69.7% 0.237 25.331 / 0.18);
+    }
+}
+
+/* --- Theme 2: Orange-Red --- */
+[data-theme="orange-red"] {
+    --main: oklch(64.6% 0.222 41.116);
+    --main-alt: oklch(54.6% 0.222 41.116);
+    --active-bg: oklch(64.6% 0.222 41.116 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="orange-red"] {
+        --main: oklch(70.6% 0.222 41.116);
+        --main-alt: oklch(80.6% 0.222 41.116);
+        --active-bg: oklch(70.6% 0.222 41.116 / 0.18);
+    }
+}
+
+/* --- Theme 3: Orange --- */
+[data-theme="orange"] {
+    --main: oklch(66.6% 0.179 58.318);
+    --main-alt: oklch(56.6% 0.179 58.318);
+    --active-bg: oklch(66.6% 0.179 58.318 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="orange"] {
+        --main: oklch(72.6% 0.179 58.318);
+        --main-alt: oklch(82.6% 0.179 58.318);
+        --active-bg: oklch(72.6% 0.179 58.318 / 0.18);
+    }
+}
+
+/* --- Theme 4: Yellow --- */
+[data-theme="yellow"] {
+    --main: oklch(68.1% 0.162 75.834);
+    --main-alt: oklch(58.1% 0.162 75.834);
+    --active-bg: oklch(68.1% 0.162 75.834 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="yellow"] {
+        --main: oklch(74.1% 0.162 75.834);
+        --main-alt: oklch(84.1% 0.162 75.834);
+        --active-bg: oklch(74.1% 0.162 75.834 / 0.18);
+    }
+}
+
+/* --- Theme 5: Green --- */
+[data-theme="green"] {
+    --main: oklch(64.8% 0.2 131.684);
+    --main-alt: oklch(54.8% 0.2 131.684);
+    --active-bg: oklch(64.8% 0.2 131.684 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="green"] {
+        --main: oklch(70.8% 0.2 131.684);
+        --main-alt: oklch(80.8% 0.2 131.684);
+        --active-bg: oklch(70.8% 0.2 131.684 / 0.18);
+    }
+}
+
+/* --- Theme 6: Emerald --- */
+[data-theme="emerald"] {
+    --main: oklch(62.7% 0.194 149.214);
+    --main-alt: oklch(52.7% 0.194 149.214);
+    --active-bg: oklch(62.7% 0.194 149.214 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="emerald"] {
+        --main: oklch(68.7% 0.194 149.214);
+        --main-alt: oklch(78.7% 0.194 149.214);
+        --active-bg: oklch(68.7% 0.194 149.214 / 0.18);
+    }
+}
+
+/* --- Theme 7: Teal --- */
+[data-theme="teal"] {
+    --main: oklch(59.6% 0.145 163.225);
+    --main-alt: oklch(49.6% 0.145 163.225);
+    --active-bg: oklch(59.6% 0.145 163.225 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="teal"] {
+        --main: oklch(65.6% 0.145 163.225);
+        --main-alt: oklch(75.6% 0.145 163.225);
+        --active-bg: oklch(65.6% 0.145 163.225 / 0.18);
+    }
+}
+
+/* --- Theme 8: Cyan --- */
+[data-theme="cyan"] {
+    --main: oklch(60% 0.118 184.704);
+    --main-alt: oklch(50% 0.118 184.704);
+    --active-bg: oklch(60% 0.118 184.704 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="cyan"] {
+        --main: oklch(66% 0.118 184.704);
+        --main-alt: oklch(76% 0.118 184.704);
+        --active-bg: oklch(66% 0.118 184.704 / 0.18);
+    }
+}
+
+/* --- Theme 9: Blue --- */
+[data-theme="blue"] {
+    --main: oklch(60.9% 0.126 221.723);
+    --main-alt: oklch(50.9% 0.126 221.723);
+    --active-bg: oklch(60.9% 0.126 221.723 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="blue"] {
+        --main: oklch(66.9% 0.126 221.723);
+        --main-alt: oklch(76.9% 0.126 221.723);
+        --active-bg: oklch(66.9% 0.126 221.723 / 0.18);
+    }
+}
+
+/* --- Theme 10: Indigo --- */
+[data-theme="indigo"] {
+    --main: oklch(58.87% 0.2323 282.69);
+    --main-alt: oklch(48.87% 0.2323 282.69);
+    --active-bg: oklch(58.87% 0.2323 282.69 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="indigo"] {
+        --main: oklch(64.87% 0.2323 282.69);
+        --main-alt: oklch(74.87% 0.2323 282.69);
+        --active-bg: oklch(64.87% 0.2323 282.69 / 0.18);
+    }
+}
+
+/* --- Theme 11: Purple --- */
+[data-theme="purple"] {
+    --main: oklch(43.83% 0.2179 303.91);
+    --main-alt: oklch(33.83% 0.2179 303.91);
+    --active-bg: oklch(43.83% 0.2179 303.91 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="purple"] {
+        --main: oklch(49.83% 0.2179 303.91);
+        --main-alt: oklch(59.83% 0.2179 303.91);
+        --active-bg: oklch(49.83% 0.2179 303.91 / 0.18);
+    }
+}
+
+/* --- Theme 12: Rose --- */
+[data-theme="rose"] {
+    --main: oklch(58.6% 0.253 17.585);
+    --main-alt: oklch(48.6% 0.253 17.585);
+    --active-bg: oklch(58.6% 0.253 17.585 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="rose"] {
+        --main: oklch(64.6% 0.253 17.585);
+        --main-alt: oklch(74.6% 0.253 17.585);
+        --active-bg: oklch(64.6% 0.253 17.585 / 0.18);
+    }
+}
+
+/* --- Theme 13: Silver / Off-White --- */
+[data-theme="silver"] {
+    --main: oklch(98.5% 0.002 247.839);
+    --main-alt: oklch(88.5% 0.002 247.839);
+    --active-bg: oklch(98.5% 0.002 247.839 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="silver"] {
+        --main: oklch(85.0% 0.002 247.839);
+        --main-alt: oklch(95.0% 0.002 247.839);
+        --active-bg: oklch(85.0% 0.002 247.839 / 0.18);
+    }
+}
+
+/* --- Theme 14: Fuchsia --- */
+[data-theme="fuchsia"] {
+    --main: oklch(59.1% 0.293 322.896);
+    --main-alt: oklch(49.1% 0.293 322.896);
+    --active-bg: oklch(59.1% 0.293 322.896 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="fuchsia"] {
+        --main: oklch(65.1% 0.293 322.896);
+        --main-alt: oklch(75.1% 0.293 322.896);
+        --active-bg: oklch(65.1% 0.293 322.896 / 0.18);
+    }
+}
+
+/* --- Theme 15: Pink --- */
+[data-theme="pink"] {
+    --main: oklch(59.2% 0.249 0.584);
+    --main-alt: oklch(49.2% 0.249 0.584);
+    --active-bg: oklch(59.2% 0.249 0.584 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="pink"] {
+        --main: oklch(65.2% 0.249 0.584);
+        --main-alt: oklch(75.2% 0.249 0.584);
+        --active-bg: oklch(65.2% 0.249 0.584 / 0.18);
+    }
+}
+
+/* --- Theme 16: Amber --- */
+[data-theme="amber"] {
+    --main: oklch(62.5% 0.190 60.500);
+    --main-alt: oklch(52.5% 0.190 60.500);
+    --active-bg: oklch(62.5% 0.190 60.500 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="amber"] {
+        --main: oklch(69.5% 0.190 60.500);
+        --main-alt: oklch(79.5% 0.190 60.500);
+        --active-bg: oklch(69.5% 0.190 60.500 / 0.18);
+    }
+}
+
+/* --- Theme 17: Lime --- */
+[data-theme="lime"] {
+    --main: oklch(72.0% 0.210 128.500);
+    --main-alt: oklch(62.0% 0.210 128.500);
+    --active-bg: oklch(72.0% 0.210 128.500 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="lime"] {
+        --main: oklch(78.0% 0.210 128.500);
+        --main-alt: oklch(86.0% 0.210 128.500);
+        --active-bg: oklch(78.0% 0.210 128.500 / 0.18);
+    }
+}
+
+/* --- Theme 18: Red --- */
+[data-theme="red"] {
+    --main: oklch(58.0% 0.250 24.500);
+    --main-alt: oklch(48.0% 0.250 24.500);
+    --active-bg: oklch(58.0% 0.250 24.500 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="red"] {
+        --main: oklch(64.0% 0.250 24.500);
+        --main-alt: oklch(74.0% 0.250 24.500);
+        --active-bg: oklch(64.0% 0.250 24.500 / 0.18);
+    }
+}
+
+/* --- Theme 19: Sky --- */
+[data-theme="sky"] {
+    --main: oklch(60.0% 0.150 235.000);
+    --main-alt: oklch(50.0% 0.150 235.000);
+    --active-bg: oklch(60.0% 0.150 235.000 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="sky"] {
+        --main: oklch(67.0% 0.150 235.000);
+        --main-alt: oklch(77.0% 0.150 235.000);
+        --active-bg: oklch(67.0% 0.150 235.000 / 0.18);
+    }
+}
+
+/* --- Theme 20: Violet --- */
+[data-theme="violet"] {
+    --main: oklch(52.0% 0.250 295.000);
+    --main-alt: oklch(42.0% 0.250 295.000);
+    --active-bg: oklch(52.0% 0.250 295.000 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="violet"] {
+        --main: oklch(59.0% 0.250 295.000);
+        --main-alt: oklch(69.0% 0.250 295.000);
+        --active-bg: oklch(59.0% 0.250 295.000 / 0.18);
+    }
+}

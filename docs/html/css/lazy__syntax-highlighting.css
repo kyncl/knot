@@ -1,0 +1,137 @@
+pre {
+    background-color: #111;
+    /* border: 1px solid var(--border); */
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin: 2rem 0;
+    font-family: var(--font-code);
+    line-height: 1.7;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    color: #e2e8f0;
+}
+
+.meta.function,
+.meta.block,
+.meta.group,
+.meta.struct {
+    color: #e2e8f0;
+}
+
+.meta.function.closure .punctuation.section.parameters.begin.rust,
+.meta.function.closure .punctuation.section.parameters.end.rust {
+    color: #56b6c2 !important;
+    font-weight: bold !important;
+}
+
+.meta.annotation.rust,
+.meta.annotation.rust *,
+.variable.annotation.rust,
+.function-call.arguments.shell {
+    color: #e5c07b !important;
+}
+
+.meta.annotation.rust .punctuation.definition.annotation.rust,
+.punctuation.definition.annotation.rust,
+.function.shell {
+    color: #c678dd !important;
+}
+
+.meta.annotation.rust .punctuation.section.group.begin.rust,
+.meta.annotation.rust .punctuation.section.group.end.rust,
+.punctuation.section.group.begin.rust,
+.punctuation.section.group.end.rust {
+    color: #c678dd !important;
+}
+
+.meta.annotation.rust .punctuation,
+.meta.annotation.rust .punctuation.accessor,
+.meta.annotation.rust .punctuation.separator {
+    color: #e2e8f0 !important;
+}
+
+.macro,
+.support.macro,
+.entity.name.function.macro,
+.variable.parameter.option.shell {
+    color: #e06c75 !important;
+}
+
+.meta.path.rust {
+    color: #56b6c2 !important;
+}
+
+.punctuation.accessor.rust,
+.punctuation.separator.rust {
+    color: #e2e8f0 !important;
+}
+
+.keyword,
+.keyword.control,
+.keyword.other,
+.storage,
+.storage.type,
+.storage.modifier,
+.storage.type.rust,
+.storage.type.struct.rust,
+.storage.type.function.rust {
+    color: #c678dd !important;
+    font-weight: bold !important;
+}
+
+.keyword.control.await,
+.keyword.storage.async {
+    color: #c678dd !important;
+    font-weight: bold !important;
+}
+
+.entity.name.function,
+.support.function {
+    color: #50fa7b !important;
+}
+
+.type,
+.entity.name.type,
+.entity.name.struct,
+.support.type,
+.support.class {
+    color: #56b6c2 !important;
+}
+
+.string,
+.string.quoted {
+    color: #98c379 !important;
+}
+
+.constant.numeric {
+    color: #d19a66 !important;
+}
+
+.comment,
+.comment * {
+    color: #787f8d !important;
+    font-style: italic !important;
+    font-weight: normal !important;
+}
+
+.comment .punctuation,
+.comment .punctuation.definition.comment,
+.punctuation.definition.comment {
+    color: #787f8d !important;
+}
+
+.comment .keyword,
+.comment .storage,
+.comment .keyword.control.await,
+.comment .keyword.storage.async {
+    color: #787f8d !important;
+    font-weight: normal !important;
+    font-style: italic !important;
+}
+
+.punctuation,
+.keyword.operator,
+.punctuation.separator,
+.meta.path {
+    color: #e2e8f0 !important;
+}

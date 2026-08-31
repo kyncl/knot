@@ -1,0 +1,21 @@
+:root,
+[data-radius-theme="standard"] {
+    --radius-lg: 8px;
+    --radius-md: 6px;
+    --radius-sm: 4px;
+    --radius-xs: 2px;
+}
+
+[data-radius-theme="brutalist"] {
+    --radius-lg: 0px;
+    --radius-md: 0px;
+    --radius-sm: 0px;
+    --radius-xs: 0px;
+}
+
+[data-radius-theme="rounded"] {
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --radius-xs: 4px;
+}

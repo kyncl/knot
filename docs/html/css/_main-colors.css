@@ -1,0 +1,31 @@
+/* --- Light Mode --- */
+:root {
+    --background: #ffffff;
+    --foreground: #09090b;
+    --muted: #71717a;
+    --border: #e4e4e7;
+    --card-bg: #f4f4f5;
+    --accent: #e4e4e7;
+    --hover-bg: rgba(0, 0, 0, 0.04);
+    --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.08);
+    --shadow-sidebar: 4px 0 25px rgba(0, 0, 0, 0.08);
+
+    /* Fonts */
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+}
+
+/* --- Dark Mode --- */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #0a0a0a;
+        --foreground: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --card-bg: #121215;
+        --accent: #27272a;
+        --hover-bg: rgba(255, 255, 255, 0.05);
+        --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.7);
+        --shadow-sidebar: 4px 0 25px rgba(0, 0, 0, 0.7);
+    }
+}
