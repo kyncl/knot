@@ -22,7 +22,7 @@ Instead of messy configurations, manage your synchronized directories
 
 # Install/Build 
 **Requirements:**
-- Cargo (1.96+)
+- Cargo (1.89+)
 - Make
 
 ```bash
