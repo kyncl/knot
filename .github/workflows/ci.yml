@@ -100,7 +100,7 @@ jobs:
       # Specify your minimum supported Rust version here (e.g., 1.75.0)
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.88.0"
+          toolchain: "1.89.0"
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
 
