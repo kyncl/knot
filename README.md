@@ -58,7 +58,7 @@ significantly.
 > Verify your settings or consult the server administrator.
 
 * **1:N Connections:** Knot can synchronize one source
-  directory with multiple remote Knots simultaneously. A
+  directory with multiple remote Knots. A
   remote Knot can be another local directory or a separate
   SSH connection.
 * **Private key authentication:** Knot fully supports SSH
