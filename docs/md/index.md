@@ -52,7 +52,7 @@ significantly.
 * **[Caching](configuration/general-configuration.html#features):** Crawling large directories can be slow. Knot
   caches the directory structure, allowing it to bypass
   unchanged files and save time during subsequent checks.
-* **[Compression](configuration/general-configuration.html#features):** Knot compresses network packets to speed
+* **[Compression](configuration/general-configuration.html#features):** Knot compresses file content to speed
   up transfers over slow connections. This trade-off
   increases CPU usage while reducing network payload size.
 
