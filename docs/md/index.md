@@ -134,7 +134,7 @@ building the application from source.
 
 ### Building from Source
 **Prerequisites:**
-* Cargo
+* Cargo (1.89+)
 * Git
 * Make (optional, for Unix)
 
