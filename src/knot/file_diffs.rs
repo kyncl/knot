@@ -107,10 +107,15 @@ impl FileDiffs {
         }
     }
 
-    pub fn visualization(&self) {
-        if let Err(error_msg) = file_diff_visualization_interactive(self) {
-            println!("Couldn't create interactive visualization, because of: {error_msg}");
-            file_diff_visualization_table(self);
+    /// Returns if user want to cancel the synchronization
+    pub fn visualization(&self) -> bool {
+        match file_diff_visualization_interactive(self) {
+            Ok(want_to_cancel) => want_to_cancel,
+            Err(error_msg) => {
+                eprintln!("Couldn't create interactive visualization, because of: {error_msg}");
+                file_diff_visualization_table(self);
+                false
+            }
         }
     }
 }

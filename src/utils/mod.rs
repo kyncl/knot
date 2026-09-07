@@ -1,6 +1,7 @@
 pub mod behavior;
 pub mod compression;
 pub mod crypto;
+pub mod env;
 pub mod formatting;
 pub mod notifications;
 pub mod password;

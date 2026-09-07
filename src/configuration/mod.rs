@@ -1,5 +1,8 @@
 use crate::{
-    configuration::{feature::FeatureConfig, global::GlobalConfig, performance::PerformanceConfig},
+    configuration::{
+        experimental::ExperimentalConfig, feature::FeatureConfig, global::GlobalConfig,
+        performance::PerformanceConfig,
+    },
     ignorer::make_git_ignore,
     utils::{paths::convert_home_path, remove_duplicates},
 };
@@ -8,12 +11,13 @@ use colored::*;
 use indicatif::HumanBytes;
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt::Display,
+    fmt::{Display, Formatter},
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::sync::Semaphore;
 
+pub mod experimental;
 pub mod feature;
 pub mod global;
 pub mod loader;
@@ -24,8 +28,10 @@ pub mod performance;
 /// Task_limit: 1_000
 /// Size_limit: 15 GB
 /// Allow_size_limit: false
-/// Use caching: false
-/// Use gitignore file: false
+/// Use caching: true
+/// Use gitignore file: true
+/// Use compression: false
+/// Use asynchronous sync: false
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MainConfig {
     // Doesn't make sense to save it inside configuration file
@@ -36,10 +42,11 @@ pub struct MainConfig {
     pub global: GlobalConfig,
     pub performance: PerformanceConfig,
     pub features: FeatureConfig,
+    pub experimental: ExperimentalConfig,
 }
 
 impl Display for MainConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let status = |val: bool| {
             if val {
                 "ENABLED".green().bold()
@@ -48,35 +55,49 @@ impl Display for MainConfig {
             }
         };
 
+        // Helper macro for Display blocks to maintain alignment
+        macro_rules! write_row {
+            ($label:expr, $val:expr) => {
+                writeln!(
+                    f,
+                    "  {} {}",
+                    format!("{:<16}", $label).truecolor(245, 202, 202).bold(),
+                    $val
+                )
+            };
+        }
+
         writeln!(f, "{}", "=== Configuration Summary ===".cyan().bold())?;
-        writeln!(
-            f,
-            "{}: {}",
-            "Config File".bold(),
-            self.config_path.display()
-        )?;
+        write_row!("Config File:", format!("{:?}", self.config_path).green())?;
 
         writeln!(f, "\n{}", "[Features]".yellow().bold())?;
-        writeln!(f, "  Caching:          {}", status(self.features.caching))?;
-        writeln!(f, "  Gitignore:        {}", status(self.features.gitignore))?;
-        writeln!(f, "  Compress:         {}", status(self.features.compress))?;
+        write_row!("Caching:", status(self.features.caching))?;
+        write_row!("Gitignore:", status(self.features.gitignore))?;
+        write_row!("Compress:", status(self.features.compress))?;
 
         writeln!(f, "\n{}", "[Performance]".yellow().bold())?;
-        writeln!(
-            f,
-            "  Task Limit:       {}",
-            self.performance.task_limit.to_string().bold()
+        write_row!(
+            "Task Limit:",
+            self.performance
+                .task_limit
+                .to_string()
+                .truecolor(248, 171, 129)
+                .bold()
         )?;
-        writeln!(
-            f,
-            "  Limit file size:  {}",
+        write_row!(
+            "Limit file size:",
             status(self.performance.allow_size_limit)
         )?;
-        writeln!(
-            f,
-            "  Size Limit:       {}",
-            HumanBytes(self.performance.size_limit).to_string().bold()
+        write_row!(
+            "Size Limit:",
+            HumanBytes(self.performance.size_limit)
+                .to_string()
+                .truecolor(248, 171, 129)
+                .bold()
         )?;
+
+        writeln!(f, "\n{}", "[Experimental]".yellow().bold())?;
+        write_row!("Async sync:", status(self.experimental.async_sync))?;
 
         Ok(())
     }
@@ -95,6 +116,7 @@ impl MainConfig {
             global: GlobalConfig::new(),
             performance: PerformanceConfig::default(),
             features: FeatureConfig::default(),
+            experimental: ExperimentalConfig::default(),
         }
     }
 
@@ -165,6 +187,12 @@ impl MainConfig {
     /// If you want use gitignore file from source knot
     pub fn gitignore(mut self, should: bool) -> Self {
         self.features.gitignore = should;
+        self
+    }
+
+    /// Experimental settings
+    pub fn async_sync(mut self, should: bool) -> Self {
+        self.experimental.async_sync = should;
         self
     }
 }

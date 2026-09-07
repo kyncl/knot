@@ -65,6 +65,13 @@ knot archive recover [OPTIONS]
 * `-t, --target <TARGET>`: Specific archived files or paths
   to restore from the remote tree.
 * `-f, --force`: Overwrite existing local files.
+* `-a, --transfer`: Transfer new recovered files without asking
+  (useful for CI/CD pipelines).
+* `-n --non-interactive`: Won't show any interactive prompts to user.
+  If you pass non-interactive flag, Knot won't transfer newly
+  recovered files. Use transfer flag to also transfer the files.
+* `-r, --recursive`: Because nested directories and files are archived too,
+you may want to recursively recover all its children.
 
 ### `remove`
 

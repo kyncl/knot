@@ -1,6 +1,6 @@
 use anyhow::Result;
 use inquire::{
-    Confirm,
+    Confirm, MultiSelect,
     ui::{Color, RenderConfig, Styled},
 };
 use std::{
@@ -11,11 +11,10 @@ use std::{
 use crate::{
     CONFIG_FILE, CONFIGURATION_FOLDER, IGNORE_PATTERNS_FILE, KNOTS_CONFIGURATION,
     cli::modification::{
-        features, global,
+        experimental, global,
         knot_config::{
-            behavior::{prompt_conflict_behavior, prompt_unique_behavior},
-            credentials::prompt_knot_credentials,
-            prompt_knot_type, prompt_path,
+            behavior::prompt_behaviors, credentials::prompt_knot_credentials, prompt_knot_type,
+            prompt_path,
         },
         performance,
     },
@@ -27,23 +26,30 @@ use crate::{
         },
     },
     knot::{KnotConfig, KnotType},
-    utils::{behavior::Behavior, paths::convert_home_path},
+    utils::paths::convert_home_path,
 };
 
-fn prompt_knot_config(default_path: &str) -> Result<KnotConfig> {
-    let ktype = prompt_knot_type()?;
+/// When user is setting source, it will show the selection, else it will have the smart
+/// credential set (type://username@hostname:port)
+pub fn prompt_knot_config(default_path: &str, is_source: bool) -> Result<KnotConfig> {
+    let (cred, ktype) = if is_source {
+        let ktype = prompt_knot_type()?;
+        prompt_knot_credentials(Some(&ktype))?
+    } else {
+        prompt_knot_credentials(None)?
+    };
     let autocomplete = ktype == KnotType::Local;
 
     Ok(KnotConfig::new(
-        ktype.clone(),
+        ktype,
         prompt_path(autocomplete, false, Some(default_path), None)?,
-        prompt_knot_credentials(Some(&ktype))?.0,
+        cred,
     ))
 }
 
 pub fn configuration() -> Result<()> {
-    println!("=== Main configuration ===");
-    let options = vec!["Features", "Performance", "Ignore patterns"];
+    eprintln!("=== Main configuration ===");
+    let options = vec!["Features", "Performance", "Ignore patterns", "Experimental"];
 
     let render_config = RenderConfig {
         highlighted_option_prefix: Styled::new("❯").with_fg(Color::LightGreen),
@@ -55,7 +61,7 @@ pub fn configuration() -> Result<()> {
         options,
     )
     .with_render_config(render_config)
-    .with_all_selected_by_default()
+    // .with_default(&[0, 1, 2])
     .prompt()?;
     let mut config = MainConfig::new().task_limit(1000);
     if choices.contains(&"Performance") {
@@ -69,10 +75,19 @@ pub fn configuration() -> Result<()> {
     }
 
     if choices.contains(&"Features") {
+        let options = vec![
+            "Enable structure caching",
+            "Respect .gitignore rules",
+            "Enable compression",
+        ];
+        let choice = MultiSelect::new("Which features should be used?", options)
+            .with_default(&[0, 1])
+            .prompt()?;
+
         config = config
-            .caching(features::prompt_allow_caching()?)
-            .gitignore(features::prompt_allow_gitignore()?)
-            .compress(features::prompt_allow_compression()?);
+            .caching(choice.contains(&"Enable structure caching"))
+            .gitignore(choice.contains(&"Respect .gitignore rules"))
+            .compress(choice.contains(&"Enable compression"));
     }
 
     if choices.contains(&"Ignore patterns") {
@@ -80,12 +95,19 @@ pub fn configuration() -> Result<()> {
         config = config.ignorer(Path::new("."), &patterns)?;
     }
 
-    println!("=== Source knot ===");
-    let source = prompt_knot_config("folder/for/source/knot")?;
+    if choices.contains(&"Experimental") {
+        config = config.async_sync(experimental::prompt_asychrnous_sync()?)
+    }
+
+    eprintln!("=== Source knot ===");
+    let source = prompt_knot_config("./", true)?;
 
     let loader = ConfigurationLoader { source, config };
+    // Because it's writing into stdout the TOML files it should make it possible
+    // To pipe the results into something
+    // It's printing the main configuration with the Knots configuration too
     println!("{}", toml::to_string(&loader)?);
-    println!("Patterns: {:?}", loader.config.global.ignore_patterns);
+    eprintln!("Patterns: {:?}", loader.config.global.ignore_patterns);
 
     let mut remote_knots = vec![];
     while inquire::Confirm::new("Do you want to create a new remote knot?")
@@ -93,16 +115,13 @@ pub fn configuration() -> Result<()> {
         .prompt()?
     {
         if remote_knots.is_empty() {
-            println!("=== Remote knots ===");
+            eprintln!("=== Remote knots ===");
         } else {
-            println!("=== New knot ===");
+            eprintln!("=== New knot ===");
         }
 
-        let config = prompt_knot_config("folder/for/remote/knot")?;
-        let behavior = Behavior {
-            uniques: prompt_unique_behavior()?,
-            conflicts: prompt_conflict_behavior()?,
-        };
+        let config = prompt_knot_config("path/to/remote/directory", false)?;
+        let behavior = prompt_behaviors()?;
 
         remote_knots.push(RemoteKnotConfig { config, behavior });
     }
@@ -135,7 +154,7 @@ pub fn configuration() -> Result<()> {
 
     if let Some(file_path) = resolve_save_path(&path_to_save, CONFIG_FILE, "Main Configuration")? {
         loader.save(&file_path)?;
-        println!("Saved Main Configuration into {file_path:?}");
+        eprintln!("Saved Main Configuration into {file_path:?}");
     }
 
     if !loader.ignore_patterns().trim().is_empty()
@@ -143,7 +162,7 @@ pub fn configuration() -> Result<()> {
             resolve_save_path(&path_to_save, IGNORE_PATTERNS_FILE, "Ignore Patterns")?
     {
         loader.save_ignore_patterns(&file_path)?;
-        println!("Saved Ignore Patterns into {file_path:?}");
+        eprintln!("Saved Ignore Patterns into {file_path:?}");
     }
 
     if !remote_knots_loader.knots.is_empty()
@@ -151,7 +170,7 @@ pub fn configuration() -> Result<()> {
             resolve_save_path(&path_to_save, KNOTS_CONFIGURATION, "Remote Knots")?
     {
         remote_knots_loader.save(&file_path)?;
-        println!("Saved Remote Knots into {file_path:?}");
+        eprintln!("Saved Remote Knots into {file_path:?}");
     }
     Ok(())
 }
@@ -183,7 +202,7 @@ fn resolve_save_path(
                 let new_name = inquire::Text::new("Enter the new file name:").prompt()?;
                 file_path = dir_path.join(new_name);
             } else {
-                println!("Skipped saving {description}.");
+                eprintln!("Skipped saving {description}.");
                 return Ok(None); // User chose not to save
             }
         }

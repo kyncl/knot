@@ -1,7 +1,7 @@
 use anyhow::Result;
 use inquire::Select;
 
-use crate::utils::behavior::{ConflictBehavior, UniqueBehavior};
+use crate::utils::behavior::{Behavior, ConflictBehavior, UniqueBehavior};
 
 struct MenuOption<T> {
     label: &'static str,
@@ -86,4 +86,67 @@ pub fn prompt_conflict_behavior() -> Result<ConflictBehavior> {
     .with_help_message("Use arrow keys to navigate and press Enter to select")
     .prompt()?
     .value)
+}
+
+#[derive(Clone, Copy)]
+pub enum SyncPreset {
+    /// Archive unique, Keep Newer on conflict
+    SafeSync,
+    /// Only Add (never delete), Keep Newer on conflict
+    TwoWayMerge,
+    /// Mirror Source to Remote, Always trust Source
+    MirrorSource,
+    /// Prompt granularly for both
+    Custom,
+}
+
+impl std::fmt::Display for SyncPreset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            SyncPreset::SafeSync => {
+                "Safe Sync [Default] (Archive unique files, keep newest on conflict)"
+            }
+            SyncPreset::TwoWayMerge => {
+                "Safe Merge (Keep files everywhere, keep newest on conflict)"
+            }
+            SyncPreset::MirrorSource => {
+                "One-Way Mirror (Make Remote identical to Source, overwrite conflicts)"
+            }
+            SyncPreset::Custom => "Custom (Configure unique and conflict rules manually)",
+        };
+        write!(f, "{}", label)
+    }
+}
+
+pub fn prompt_behaviors() -> Result<Behavior> {
+    let presets = vec![
+        SyncPreset::SafeSync,
+        SyncPreset::TwoWayMerge,
+        SyncPreset::MirrorSource,
+        SyncPreset::Custom,
+    ];
+
+    let choice = Select::new("Choose a synchronization strategy:", presets)
+        .with_help_message("You can change granular behaviors later in your config file")
+        .prompt()?;
+
+    match choice {
+        SyncPreset::SafeSync => Ok(Behavior {
+            uniques: UniqueBehavior::Archive,
+            conflicts: ConflictBehavior::Newer,
+        }),
+        SyncPreset::TwoWayMerge => Ok(Behavior {
+            uniques: UniqueBehavior::OnlyAdd,
+            conflicts: ConflictBehavior::Newer,
+        }),
+        SyncPreset::MirrorSource => Ok(Behavior {
+            uniques: UniqueBehavior::MirrorSource,
+            conflicts: ConflictBehavior::Source,
+        }),
+        SyncPreset::Custom => {
+            let uniques = prompt_unique_behavior()?;
+            let conflicts = prompt_conflict_behavior()?;
+            Ok(Behavior { uniques, conflicts })
+        }
+    }
 }

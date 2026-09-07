@@ -21,7 +21,7 @@ pub fn prompt_size_limit() -> Result<u64> {
 
     let input = Text::new("Enter maximum file size:")
         .with_placeholder("e.g., 10MB, 500KB, 1GB")
-        .with_help_message("Supports standard units like KB, MB, GB")
+        .with_help_message("Supports standard units like KB, MB, GB, ...")
         .with_validator(validator)
         .prompt()?;
     let parsed_size = parse_size(&input)?;

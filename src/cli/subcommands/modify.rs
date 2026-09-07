@@ -20,6 +20,10 @@ pub enum ModifySubcommand {
     /// Set or update the maximum file size limit
     SizeLimit,
 
+    /// Will do asynchronous synchronization with multiple Knots.
+    /// EXPERIMENTAL: Use at your own risk
+    AsyncSync,
+
     /// Modify properties of the local source knot configuration
     Source {
         #[command(subcommand)]

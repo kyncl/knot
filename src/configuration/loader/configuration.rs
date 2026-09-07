@@ -116,6 +116,8 @@ impl ConfigurationLoader {
         doc["config"]["features"]["gitignore"] = value(self.config.features.gitignore);
         doc["config"]["features"]["compress"] = value(self.config.features.compress);
 
+        doc["config"]["experimental"]["async_sync"] = value(self.config.experimental.async_sync);
+
         doc["source"]["type"] = value(format!("{:?}", self.source.adapter_type));
         doc["source"]["path"] = value(self.source.path.to_string_lossy().as_ref());
 

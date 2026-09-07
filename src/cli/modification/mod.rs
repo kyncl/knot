@@ -7,6 +7,7 @@ use crate::{
     IGNORE_PATTERNS_FILE, KNOTS_CONFIGURATION,
     cli::{
         modification::{
+            experimental::prompt_asychrnous_sync,
             features::{prompt_allow_caching, prompt_allow_compression, prompt_allow_gitignore},
             global::prompt_ignore_patterns,
             knot_config::{
@@ -31,10 +32,13 @@ use crate::{
     },
 };
 
+pub mod adding;
+pub mod experimental;
 pub mod features;
 pub mod global;
 pub mod knot_config;
 pub mod performance;
+pub mod removing;
 
 pub fn modify(property: ModifySubcommand, config_path: Option<PathBuf>) -> Result<()> {
     let (config_path, config_folder) = resolve_config_paths(config_path)?;
@@ -47,6 +51,7 @@ pub fn modify(property: ModifySubcommand, config_path: Option<PathBuf>) -> Resul
     let features = &mut loaded_conf.config.features;
     let performance = &mut loaded_conf.config.performance;
     let global = &mut loaded_conf.config.global;
+    let experimental = &mut loaded_conf.config.experimental;
     match property {
         ModifySubcommand::Caching => {
             features.caching = prompt_allow_caching()?;
@@ -62,6 +67,9 @@ pub fn modify(property: ModifySubcommand, config_path: Option<PathBuf>) -> Resul
         }
         ModifySubcommand::Compression => {
             features.compress = prompt_allow_compression()?;
+        }
+        ModifySubcommand::AsyncSync => {
+            experimental.async_sync = prompt_asychrnous_sync()?;
         }
         ModifySubcommand::Source { properties } => {
             let knot = &mut loaded_conf.source;
@@ -115,7 +123,7 @@ fn handle_knot_property(
         }
         KnotModifySubcommand::Path => {
             let autocomplete = knot.adapter_type == KnotType::Local;
-            knot.path = prompt_path(autocomplete, false, Some("folder/for/remote/knot"), None)?;
+            knot.path = prompt_path(autocomplete, false, Some("path/to/remote/directory"), None)?;
         }
         KnotModifySubcommand::Port => {
             let port = prompt_port()?;
@@ -186,10 +194,10 @@ fn handle_knot_property(
             if let Some(cred) = &knot.credentials {
                 if choice == "Rewrite" {
                     save_password_new(cred, &prompt_password()?)?;
-                    println!("Password was rewritten successfully");
+                    eprintln!("Password was rewritten successfully");
                 } else if choice == "Delete" {
                     delete_password(cred)?;
-                    println!("Password was deleted successfully");
+                    eprintln!("Password was deleted successfully");
                 }
             }
         }

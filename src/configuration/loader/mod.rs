@@ -51,11 +51,17 @@ allow_size_limit = false
 
 [config.features]
 # Enable cache layer
-caching = false
+caching = true
 # Respect .gitignore files
-gitignore = false
+gitignore = true
 # Enable response compression
 compress = false
+
+[config.experimental]
+# Enables asynchronous synchronization.
+# WARNING: This speeds up syncing with multiple Remote
+# Knots, but it can break the UI and cause race conditions.
+async_sync = false
 
 [source]
 # Adapter driver type

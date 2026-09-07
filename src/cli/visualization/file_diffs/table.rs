@@ -14,8 +14,8 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
     let term_width = terminal_size::terminal_size()
         .map(|(terminal_size::Width(w), _)| w)
         .unwrap_or(80);
-    println!("\n{}", "=== SYNCHRONIZATION REPORT ===".bold().cyan());
-    println!(
+    eprintln!("\n{}", "=== SYNCHRONIZATION REPORT ===".bold().cyan());
+    eprintln!(
         "{} {} | {} {} | {} {} | {} {}",
         "++ Source Unique:".green(),
         diffs.source_unique.len().to_string().bold(),
@@ -26,9 +26,9 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
         "== Archived:".yellow(),
         diffs.archived.len().to_string().bold(),
     );
-    println!("{}", "─".repeat(term_width as usize).bright_black());
+    eprintln!("{}", "─".repeat(term_width as usize).bright_black());
     if !diffs.conflicts.is_empty() {
-        println!(
+        eprintln!(
             "\n {}",
             "!!  CONFLICTS (Modified on both devices)".bold().red()
         );
@@ -36,7 +36,7 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
     }
 
     if !diffs.source_unique.is_empty() {
-        println!(
+        eprintln!(
             "\n {}",
             "++ SOURCE UNIQUE (Missing on Remote)".bold().green()
         );
@@ -44,7 +44,7 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
     }
 
     if !diffs.remote_unique.is_empty() {
-        println!(
+        eprintln!(
             "\n {}",
             "-- REMOTE UNIQUE (Missing on Source)".bold().blue()
         );
@@ -52,11 +52,11 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
     }
 
     if !diffs.archived.is_empty() {
-        println!("\n {}", "== ARCHIVED FILES".bold().yellow());
+        eprintln!("\n {}", "== ARCHIVED FILES".bold().yellow());
         render_standard_table(&diffs.archived, term_width, TableColor::Yellow);
     }
 
-    println!();
+    eprintln!();
 }
 
 fn render_standard_table(files: &[KnotFile], width: u16, accent_color: TableColor) {

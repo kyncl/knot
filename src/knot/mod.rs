@@ -17,6 +17,7 @@ use crate::{
 };
 use anyhow::Result;
 use futures::{StreamExt, TryStreamExt, stream};
+use indicatif::MultiProgress;
 use serde::{Deserialize, Serialize};
 use std::{
     ops::Range,
@@ -293,8 +294,9 @@ impl Knot {
         foreign: &RemoteKnot,
         config: Arc<MainConfig>,
         non_interactive: bool,
+        main_progress: Option<&MultiProgress>,
     ) -> Result<()> {
-        sync(self, foreign, config, non_interactive).await
+        sync(self, foreign, config, non_interactive, main_progress).await
     }
 
     /// TODO: This function should be separated into adapters

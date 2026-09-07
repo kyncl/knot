@@ -8,10 +8,13 @@ knot modes
     initialization
     archiving
     daemon
+    configuration-visualization
     modification
+    adding-and-removing
 knot modes/internal modes
     crawl
     file-system
     local-archive
 shell-completion
+cicd
 roadmap

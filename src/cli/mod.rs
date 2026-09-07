@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use strum::Display;
 
 use crate::cli::subcommands::{
-    archiving::ArchiveSubcommand, file_system::FileSubcommand, modify::ModifySubcommand,
+    add::AddSubcommand, archiving::ArchiveSubcommand, file_system::FileSubcommand,
+    modify::ModifySubcommand, remove::RemoveSubcommand,
 };
 pub mod autocomplete;
 pub mod modification;
@@ -83,6 +84,39 @@ pub enum ModeArgs {
     Modify {
         #[command(subcommand)]
         specific_property: ModifySubcommand,
+
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
+
+    /// Show all values that current/specified configuration has
+    Config {
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+
+        /// You can specify what format the configuration should be,
+        /// printed out. When not specified, Knot will use visually
+        /// modified TOML-like format
+        #[arg(short, long)]
+        format: Option<ConfigFormat>,
+    },
+
+    /// Adding new values inside multiple value properties
+    Add {
+        #[command(subcommand)]
+        actions: AddSubcommand,
+
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+    },
+
+    /// Removing values inside multiple value properties
+    Remove {
+        #[command(subcommand)]
+        actions: RemoveSubcommand,
 
         /// Path to the configuration file or workspace folder
         #[arg(short, long)]
@@ -173,4 +207,12 @@ pub enum StructFormat {
     Json,
     /// Binary format encoded in Base64
     Binary,
+}
+
+#[derive(Debug, PartialEq, Clone, ValueEnum)]
+pub enum ConfigFormat {
+    /// JavaScript Object Notation (JSON) format
+    Json,
+    /// Tom's Obvious Minimal Language
+    Toml,
 }

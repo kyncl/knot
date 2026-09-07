@@ -114,6 +114,7 @@ significantly.
 * A terminal emulator
 * Internet or local network connection
 * Electricity (optional)
+* Nerdfonts (optional, you'll see weird symbols otherwise)
 
 ## Installation
 You can install Knot by downloading a pre-compiled release
@@ -189,3 +190,7 @@ You are free to use, modify, and distribute the software,
 provided you keep the source open and retain the original
 attribution. If you use Knot for commercial projects, a
 courtesy notice or clear attribution is highly appreciated.
+
+You read it all? Here's a cat for you.
+
+/ᐠ•⩊•マ

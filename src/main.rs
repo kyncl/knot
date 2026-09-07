@@ -1,15 +1,25 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
+use colored::*;
 use futures::future;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use knot::{
-    cli::{KnotArgs, ModeArgs, modification, subcommands::init},
+    cli::{
+        KnotArgs, ModeArgs,
+        modification::{self, adding::add_new, removing::remove_actions},
+        subcommands::init,
+        visualization::config::visualize_configuration,
+    },
     configuration::MainConfig,
     knot::{file::KnotFile, manager::KnotManager},
     modes::{
         archiving::handle_archiving, archiving_local::handle_local_archiving, crawl::crawl,
         file::handle_files, setup::setup,
     },
-    utils::{notifications::send_notification, shell_complete::generate_shell_complete},
+    utils::{
+        env::is_ci_environment, notifications::send_notification,
+        shell_complete::generate_shell_complete,
+    },
 };
 use parse_size::parse_size;
 use std::{
@@ -38,8 +48,6 @@ async fn main() -> Result<()> {
             let (main_config, mut knots) = setup(config_path)
                 .await
                 .map_err(|e| anyhow!("Setup failed: {e}"))?;
-            println!("{main_config}");
-            println!("{:?}", main_config.global.ignore_patterns);
 
             let statuses = main_sync(&mut knots, main_config, None, non_interactive).await?;
             if notifications {
@@ -64,7 +72,7 @@ async fn main() -> Result<()> {
             let mut last_crawled = knots.source.crawl_dir(Arc::clone(&main_config)).await?;
             last_crawled.sort_unstable_by(|a, b| a.path.cmp(&b.path));
             let mut changes_detected = false;
-            println!("Listening...");
+            eprint!("{}", "Listening...".dimmed());
             loop {
                 tokio::time::sleep(Duration::from_millis(1500)).await;
                 let mut new_crawled = knots.source.crawl_dir(Arc::clone(&main_config)).await?;
@@ -75,7 +83,7 @@ async fn main() -> Result<()> {
                     changes_detected = true;
                     last_crawled = new_crawled;
                 } else if changes_detected {
-                    println!("Syncing...");
+                    eprintln!("\n{}", "Syncing...".dimmed().cyan());
                     let statuses = main_sync(
                         &mut knots,
                         Arc::clone(&main_config),
@@ -86,9 +94,9 @@ async fn main() -> Result<()> {
                     if notifications {
                         handle_sync_notifications(&statuses);
                     }
-                    println!("Success syncing!");
+                    eprintln!("{}", "Success syncing!".dimmed().green());
                     changes_detected = false;
-                    println!("Listening...");
+                    eprint!("{}", "Listening...".dimmed());
                 }
             }
         }
@@ -120,8 +128,6 @@ async fn main() -> Result<()> {
                 .ignorer(&crawl_path, &patterns)?;
             crawl(format, compress, crawl_path, config).await?;
         }
-        ModeArgs::File { cmd } => handle_files(cmd).await?,
-        ModeArgs::ArchiveLocal { actions } => handle_local_archiving(actions).await?,
         ModeArgs::Archive {
             actions,
             index,
@@ -145,11 +151,25 @@ async fn main() -> Result<()> {
                 status?;
             }
         }
+        ModeArgs::Config {
+            config_path,
+            format,
+        } => visualize_configuration(config_path, format)?,
+        ModeArgs::File { cmd } => handle_files(cmd).await?,
+        ModeArgs::ArchiveLocal { actions } => handle_local_archiving(actions).await?,
         ModeArgs::Init => init::configuration()?,
         ModeArgs::Modify {
             specific_property,
             config_path,
         } => modification::modify(specific_property, config_path)?,
+        ModeArgs::Add {
+            actions,
+            config_path,
+        } => add_new(actions, config_path)?,
+        ModeArgs::Remove {
+            actions,
+            config_path,
+        } => remove_actions(actions, config_path)?,
         ModeArgs::Complete { shell } => generate_shell_complete(shell)?,
     };
     Ok(())
@@ -182,19 +202,108 @@ async fn main_sync(
     tokio::try_join!(source_fut, remotes_fut)?;
     debug!("Update took: {:0.2?}", start_time.elapsed());
 
-    let sync_fut = knots.remotes.iter().enumerate().map(|(index, remote)| {
-        let source = &knots.source;
+    let statuses = if main_config.experimental.async_sync {
+        let sync_fut = knots.remotes.iter().enumerate().map(|(index, remote)| {
+            let source = &knots.source;
 
-        let config_clone = Arc::clone(&main_config);
-        async move {
-            source
-                .sync(remote, config_clone, non_interactive)
-                .await
-                .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
+            let config_clone = Arc::clone(&main_config);
+            if is_ci_environment() {
+                eprintln!("Doing remote Knot #{index} ...");
+            }
+            async move {
+                source
+                    .sync(remote, config_clone, non_interactive, None)
+                    .await
+                    .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
+            }
+        });
+        future::join_all(sync_fut).await
+    } else {
+        let m = MultiProgress::new();
+        let node_graph_pb = m.add(ProgressBar::new_spinner());
+        if is_ci_environment() {
+            m.set_draw_target(ProgressDrawTarget::hidden());
+            node_graph_pb.set_draw_target(ProgressDrawTarget::hidden());
         }
-    });
+        node_graph_pb.set_style(
+            ProgressStyle::with_template(" {prefix:.cyan}{spinner:.blue}{msg}")
+                .unwrap()
+                // .tick_chars("󰪞󰪟󰪠󰪡󰪢󰪣󰪤󰪥")
+                // .tick_chars("○◎●◎◌"),
+                .tick_chars(""),
+        );
+        node_graph_pb.enable_steady_tick(Duration::from_millis(500));
 
-    let statuses = future::join_all(sync_fut).await;
+        let total_remotes = knots.remotes.len();
+        let mut statuses = Vec::with_capacity(total_remotes);
+
+        for (index, remote) in knots.remotes.iter().enumerate() {
+            let mut prefix = String::new();
+            for i in 0..index {
+                let node_str = "".cyan().to_string();
+                let pipe_str = if i == index - 1 {
+                    format!(
+                        "{}{}{}",
+                        "—".cyan(),
+                        "—".truecolor(137, 179, 188),
+                        "—".blue()
+                    )
+                } else {
+                    "———".cyan().to_string()
+                };
+
+                prefix.push_str(&format!("{} {}", node_str, pipe_str));
+            }
+            node_graph_pb.set_prefix(prefix);
+
+            let mut msg = String::new();
+            for _ in (index + 1)..total_remotes {
+                msg.push_str(" ———");
+            }
+
+            msg.push_str(&format!(
+                "   [Syncing Knot {:02}/{:02}]",
+                index + 1,
+                total_remotes
+            ));
+            node_graph_pb.set_message(msg);
+
+            let source = &knots.source;
+            let config_clone = Arc::clone(&main_config);
+            let progress = if is_ci_environment() {
+                eprintln!("Doing remote Knot #{index}...");
+                m.set_draw_target(ProgressDrawTarget::hidden());
+                None
+            } else {
+                Some(&m)
+            };
+            statuses.push(
+                source
+                    .sync(remote, config_clone, non_interactive, progress)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Sync failed on remote #{index}: {e}")),
+            );
+        }
+
+        let mut final_graph = String::new();
+        for _ in 0..(total_remotes.saturating_sub(1)) {
+            final_graph.push_str(&format!("{} {}", "".green(), "———".green()));
+        }
+        if total_remotes > 0 {
+            final_graph.push_str(&format!("{}", "".green()));
+        }
+
+        node_graph_pb.set_style(ProgressStyle::with_template(" {msg:.green} ").unwrap());
+        node_graph_pb.finish_with_message(format!(
+            "{}    {}",
+            final_graph.green(),
+            "[All Knots Synced]".green()
+        ));
+
+        statuses
+    };
+
+    eprintln!(" {}", "<=> Synchronization process finished".blue());
     Ok(statuses)
 }
 

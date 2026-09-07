@@ -23,7 +23,7 @@ pub async fn handle_files(cmd: FileSubcommand) -> Result<()> {
                 .decode(data.trim())
                 .map_err(|e| anyhow!("Failed to decode Base64 data: {}", e))?;
             knot.write_at(&path, &decoded_bytes, offset).await?;
-            println!("Successfully wrote data.");
+            eprintln!("Successfully wrote data.");
         }
         FileSubcommand::WriteStream {
             path,
@@ -77,37 +77,37 @@ pub async fn handle_files(cmd: FileSubcommand) -> Result<()> {
                 .decode(data.trim())
                 .map_err(|e| anyhow!("Failed to decode Base64 data: {}", e))?;
             knot.overwrite(&path, &decoded_bytes).await?;
-            println!("Overwrote file successfully.");
+            eprintln!("Overwrote file successfully.");
         }
         FileSubcommand::ReadInterval { path, start, end } => {
             let bytes = knot.read_range(&path, start..end).await?;
             let encoded = STANDARD.encode(&bytes);
-            println!("{}", encoded);
+            println!("{encoded}");
         }
         FileSubcommand::ReadFull { path } => {
             let bytes = knot.read_all(&path).await?;
             let encoded = STANDARD.encode(&bytes);
-            println!("{}", encoded);
+            println!("{encoded}");
         }
         FileSubcommand::Empty { path } => {
             knot.truncate(&path).await?;
-            println!("File emptied successfully.");
+            eprintln!("File emptied successfully.");
         }
         FileSubcommand::Rename { old_path, new_path } => {
             knot.rename(&old_path, &new_path).await?;
-            println!("File renamed successfully.");
+            eprintln!("File renamed successfully.");
         }
         FileSubcommand::Delete { path } => {
             knot.delete(path).await?;
-            println!("File deleted.");
+            eprintln!("File deleted.");
         }
         FileSubcommand::Create { path } => {
             knot.create(&path).await?;
-            println!("Empty file created.");
+            eprintln!("Empty file created.");
         }
         FileSubcommand::CreateDir { path } => {
             knot.mkdir(&path).await?;
-            println!("Directory created.");
+            eprintln!("Directory created.");
         }
         FileSubcommand::CreateDirs { path } => {
             knot.mkdir_batch(path).await?;

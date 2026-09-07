@@ -23,6 +23,12 @@ race conditions if the same file is modified in two distinct
 remote Knots. Processing remotes sequentially establishes a
 clear priority and prevents unresolvable conflicts.
 
+> [!NOTE]
+> You can override this behavior and enable asynchronous
+> (concurrent) synchronization for faster performance with
+> multiple remotes. However, this may cause file conflicts
+> and broken UI outputs.
+
 <div class="workflow-diagram" style="border-radius: 4px; margin: 2rem 0; overflow-x: auto; color: white;" id="figure-1">
 <svg viewBox="0 0 800 400" width="100%" style="min-width: 545px; display: block;" xmlns="http://www.w3.org/2000/svg">
     <defs>

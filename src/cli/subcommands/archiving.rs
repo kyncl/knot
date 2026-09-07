@@ -12,12 +12,25 @@ pub enum ArchiveSubcommand {
         root_path: Option<PathBuf>,
 
         /// Specific archived files or paths to restore from the remote tree
+        /// Empty target will make restoration of all archived files
         #[arg(short, long)]
         target: Vec<PathBuf>,
 
         /// Overwrite existing files
         #[arg(short, long)]
         force: bool,
+
+        /// Will transfer new recovered files without asking
+        #[arg(short = 'a', long)]
+        transfer: bool,
+
+        /// Won't show any interactive CLI/TUI options
+        #[arg(short, long)]
+        non_interactive: bool,
+
+        /// Recursively recover all children of previously directory
+        #[arg(short, long)]
+        recursive: bool,
     },
 
     /// Remove stored archives

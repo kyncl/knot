@@ -11,11 +11,24 @@ improvements, and connection adapters for Knot.
 * [ ] **Delta Sync:** Implement byte-level differential
   transfers to send only changed file segments rather than full
   files.
-* [ ] **Remote Command:** Add a dedicated command to attach
+* [X] **Remote Command:** Add a dedicated command to attach
   new remote targets (e.g., `knot add remote`).
-* [ ] **Init Refactor:** Improve the `knot init` wizard to use
+* [X] **Init Refactor:** Improve the `knot init` wizard to use
   URI strings, eliminating redundant prompts for connection
   types.
+
+> [!NOTE]
+> When configuring a source Knot, the CLI displays a connection
+> type menu. For remote Knots, it asks for credential string.
+> Missing values are given by sequentially prompting for type,
+> username and port (host must be give in the credential string).
+>
+> Typically, configuring a source requires two prompts, while
+> each remote Knot requires four. You can skip non-essential
+> prompts by applying default settings for general options.
+> If you have ideas on how to improve this flow, pull requests
+> are welcome on GitHub.
+
 * [ ] **Path Variables:** Support environment and path
   variables directly inside configuration files.
 * [ ] **Template Generation:** Allow users to generate

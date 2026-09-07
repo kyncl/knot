@@ -88,23 +88,39 @@ pub async fn handle_archiving(
                 };
                 if should_do_it {
                     chosen.knot.delete(to_delete).await?;
-                    println!("Files were deleted successfully");
+                    eprintln!("Files were deleted successfully");
                 }
             }
             return Ok(());
         }
-        Some(ArchiveSubcommand::Recover { target, force, .. }) => {
+        Some(ArchiveSubcommand::Recover {
+            target,
+            force,
+            transfer,
+            non_interactive,
+            recursive,
+            ..
+        }) => {
             if !target.is_empty() {
                 chosen.knot.recover_files(target, force).await?;
-                let should_transfer = inquire::Confirm::new(
-                    "Do you want to try transfer these files into your source?",
-                )
-                .with_default(false)
-                .prompt()?;
+                let should_transfer = if transfer {
+                    true
+                } else {
+                    if non_interactive {
+                        false
+                    } else {
+                        inquire::Confirm::new(
+                            "Do you want to try transfer these files into your source?",
+                        )
+                        .with_default(false)
+                        .prompt()?
+                    }
+                };
                 if should_transfer {
                     let remote = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
                     let diffs = FileDiffs::new(&source, source_path, &remote, remote_path);
                     add_unique_files(
+                        None,
                         &diffs.remote_unique,
                         &chosen.knot.path,
                         &knots.source.path,
@@ -113,12 +129,12 @@ pub async fn handle_archiving(
                         main_config.features.compress,
                     )
                     .await?;
-                    println!("Transfer was successful");
+                    eprintln!("Transfer was successful");
                 }
             } else {
-                let files = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
-                let archived: Vec<PathBuf> =
-                    files
+                loop {
+                    let files = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
+                    let archived: Vec<PathBuf> = files
                         .into_iter()
                         .filter_map(|file| {
                             if file.path.file_name().is_some_and(|name| {
@@ -130,32 +146,52 @@ pub async fn handle_archiving(
                             }
                         })
                         .collect();
-                chosen.knot.recover_files(archived, force).await?;
-                let should_transfer = inquire::Confirm::new(
-                    "Do you want to try transfer these files into your source?",
-                )
-                .with_default(false)
-                .prompt()?;
-                if should_transfer {
-                    let remote = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
-                    let diffs = FileDiffs::new(&source, source_path, &remote, remote_path);
-                    add_unique_files(
-                        &diffs.remote_unique,
-                        &chosen.knot.path,
-                        &knots.source.path,
-                        &chosen.knot,
-                        &knots.source,
-                        main_config.features.compress,
-                    )
-                    .await?;
-                    println!("Transfer was successful");
+                    if archived.is_empty() {
+                        eprintln!("No archived files");
+                        break;
+                    }
+
+                    chosen.knot.recover_files(archived, force).await?;
+                    // Right now if you do transfer the non
+                    let should_transfer = if transfer {
+                        true
+                    } else {
+                        if non_interactive {
+                            false
+                        } else {
+                            inquire::Confirm::new(
+                                "Do you want to try transfer these files into your source?",
+                            )
+                            .with_default(false)
+                            .prompt()?
+                        }
+                    };
+                    if should_transfer {
+                        let remote = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
+                        let diffs = FileDiffs::new(&source, source_path, &remote, remote_path);
+                        add_unique_files(
+                            None,
+                            &diffs.remote_unique,
+                            &chosen.knot.path,
+                            &knots.source.path,
+                            &chosen.knot,
+                            &knots.source,
+                            main_config.features.compress,
+                        )
+                        .await?;
+                        eprintln!("Transfer was successful");
+                    }
+
+                    if !recursive {
+                        break;
+                    }
                 }
             }
             return Ok(());
         }
         Some(ArchiveSubcommand::Compress { dirs, files }) => {
             chosen.knot.archive_files(files, dirs).await?;
-            println!("Archiving was successful");
+            eprintln!("Archiving was successful");
             return Ok(());
         }
         None | Some(ArchiveSubcommand::Resolve { .. }) => {
@@ -190,7 +226,7 @@ pub async fn handle_archiving(
         if !chosen_files.is_empty() && archived.is_empty() {
             let diffs = FileDiffs::new(&source, source_path, &chosen_files, remote_path);
             if diffs.remote_unique.is_empty() {
-                println!("No archived or remote unique files found");
+                eprintln!("No archived or remote unique files found");
                 return Ok(());
             } else if !did_chose {
                 if inquire::Confirm::new("Hmm, it seems there's no archived file but unique remote files. Do you want to recover them?")
@@ -198,6 +234,7 @@ pub async fn handle_archiving(
                         .prompt()?
                 {
                     add_unique_files(
+                        None,
                         &diffs.remote_unique,
                         &chosen.knot.path,
                         &knots.source.path,
@@ -206,10 +243,10 @@ pub async fn handle_archiving(
                         main_config.features.compress,
                     )
                         .await?;
-                    println!("If you have problems with file permissions with git, try `git checkout -- .`");
+                    eprintln!("If you have problems with file permissions with git, try `git checkout -- .`");
                 }
                 else {
-                    println!("Nothing to resolve");
+                    eprintln!("Nothing to resolve");
                 }
                 return Ok(());
             }
@@ -244,6 +281,7 @@ pub async fn handle_archiving(
     }
     let diffs = FileDiffs::new(&source, source_path, &chosen_files, remote_path);
     add_unique_files(
+        None,
         &diffs.remote_unique,
         &chosen.knot.path,
         &knots.source.path,

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use inquire::{Confirm, CustomType, Password, Select, Text};
+use inquire::{Confirm, CustomType, Password, Select, Text, validator::Validation};
 use std::{fmt::Debug, path::PathBuf};
 use tracing::debug;
 
@@ -168,12 +168,25 @@ pub fn prompt_knot_credentials(
         return Ok((None, ktype.clone()));
     }
 
+    let validator = |input: &str| match !input.trim().is_empty() {
+        true => Ok(Validation::Valid),
+        false => Ok(Validation::Invalid("Expecting at least Host name".into())),
+    };
+
     let raw_input = Text::new("Enter connection string or Host/IP:")
         .with_placeholder("ssh://user@host:22 or user@host:port")
         .with_help_message(
-            "You can pass full URLs or partial info; missing parts will be prompted.",
+            "You can pass full URLs or partial info; missing parts will be prompted.
+By writing `local://`, the credential part will be skipped
+(it will be assumed you want local Knot type)",
         )
+        .with_validator(validator)
         .prompt()?;
+
+    let cleaned_input = raw_input.trim().to_lowercase();
+    if cleaned_input == "local://" {
+        return Ok((None, KnotType::Local));
+    }
 
     let cred = if !raw_input.is_empty() {
         connection_string(&raw_input)
