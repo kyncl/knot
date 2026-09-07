@@ -175,7 +175,7 @@ pub fn visualize_configuration(
 #[cfg(unix)]
 fn render_output(output: &str, term_height: Option<u16>) -> Result<()> {
     let line_count = output.lines().count();
-    let exceeds_height = term_height.map_or(false, |h| line_count > h as usize);
+    let exceeds_height = term_height.is_some_and(|h| line_count > h as usize);
 
     if exceeds_height {
         // -R renders ANSI escape codes (colors)

@@ -514,7 +514,7 @@ where
 
     if small_files.is_empty() && large_files.is_empty() {
         if let Some(m) = main_progress {
-            let msg = format!(" No files to transfer");
+            let msg = " No files to transfer".to_string();
             let log_pb = m.add(ProgressBar::new(0));
             log_pb.set_style(ProgressStyle::with_template("{msg}").unwrap());
             log_pb.finish_with_message(msg);

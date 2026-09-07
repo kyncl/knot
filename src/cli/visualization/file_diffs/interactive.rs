@@ -184,15 +184,14 @@ pub fn file_diff_visualization_interactive(
 
                     // --- VIEWPORT COMPUTATION ---
                     // Calculate top offset so selected_idx is always in view
-                    let scroll_offset = if visible_rows_count == 0 {
-                        0
-                    } else if selected_idx < visible_rows_count {
-                        0
-                    } else {
-                        (selected_idx + 1)
-                            .saturating_sub(visible_rows_count)
-                            .min(active_len.saturating_sub(visible_rows_count))
-                    };
+                    let scroll_offset =
+                        if visible_rows_count == 0 || selected_idx < visible_rows_count {
+                            0
+                        } else {
+                            (selected_idx + 1)
+                                .saturating_sub(visible_rows_count)
+                                .min(active_len.saturating_sub(visible_rows_count))
+                        };
 
                     // --- LAZY ROW RENDERING (O(visible) instead of O(N)) ---
                     let (rows, header_cols, widths): (Vec<Row>, Vec<&str>, Vec<Constraint>) =
@@ -501,11 +500,9 @@ pub fn file_diff_visualization_interactive(
                             selected_idx = 0;
                             needs_redraw = true;
                         }
-                        KeyCode::End => {
-                            if active_len > 0 {
-                                selected_idx = active_len - 1;
-                                needs_redraw = true;
-                            }
+                        KeyCode::End if active_len > 0 => {
+                            selected_idx = active_len - 1;
+                            needs_redraw = true;
                         }
                         _ => {}
                     },
