@@ -77,6 +77,17 @@ pub enum ModeArgs {
         notifications: bool,
     },
 
+    /// All in one TUI Dashboard for file management
+    Dashboard {
+        /// Path to the configuration file or workspace folder
+        #[arg(short, long)]
+        config_path: Option<PathBuf>,
+
+        /// Send desktop notifications whenever a sync completes or fails
+        #[arg(short, long)]
+        notifications: bool,
+    },
+
     /// Initialize your configuration file with comfy CLI
     Init,
 

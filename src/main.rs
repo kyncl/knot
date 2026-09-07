@@ -8,7 +8,7 @@ use knot::{
         KnotArgs, ModeArgs,
         modification::{self, adding::add_new, removing::remove_actions},
         subcommands::init,
-        visualization::config::visualize_configuration,
+        visualization::{config::visualize_configuration, dashboard},
     },
     configuration::MainConfig,
     knot::{file::KnotFile, manager::KnotManager},
@@ -171,6 +171,10 @@ async fn main() -> Result<()> {
             config_path,
         } => remove_actions(actions, config_path)?,
         ModeArgs::Complete { shell } => generate_shell_complete(shell)?,
+        ModeArgs::Dashboard {
+            config_path,
+            notifications,
+        } => dashboard::show_dashborad(config_path, notifications).await?,
     };
     Ok(())
 }
