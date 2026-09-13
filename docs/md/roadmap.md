@@ -58,8 +58,16 @@ improvements, and connection adapters for Knot.
 
 ## Interfaces (UI/UX)
 
-* [ ] **TUI Dashboard:** Provide a terminal dashboard for
+* [X] **TUI Dashboard:** Provide a terminal dashboard for
   managing Knot operations and monitoring sync status.
+
+> [!NOTE]
+> Because of Rust compiler bug, you cannot synchronize only in
+> TUI (you must jump out of the TUI for the process). This bug
+> cannot be fixed by Knot, because it's Rust compiler issue.
+
+* [ ] **TUI Dashboard file manipulation:** There should be an option to
+  manually select file for synchronization/deletion/archiving.
 * [ ] **Graphical Interfaces:** Build dedicated desktop and
   mobile GUI applications.
 * [ ] **Dynamic Key Locator:** Automate discovery of SSH

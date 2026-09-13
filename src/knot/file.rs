@@ -37,6 +37,12 @@ pub fn save_cache(folder: &Path, files: &[KnotFile]) -> Result<()> {
     Ok(())
 }
 
+/// It can be optimized so that the struct takes 40
+/// instead of 64 bytes. Remove is_dir and change if hash
+/// is 0, it's directory (removing dir and option),
+/// Changing from PathBuf to Arc<Path>
+/// Why this optimization isn't used? This will result in
+/// refactoring, which will be done in future
 #[derive(
     Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize, PartialEq, Eq,
 )]
@@ -44,10 +50,10 @@ pub struct KnotFile {
     #[rkyv(with = AsString)]
     pub path: PathBuf,
     pub content_hash: Option<u64>,
-    pub is_dir: bool,
     /// modified time
     pub mtime: i64,
     pub size: u64,
+    pub is_dir: bool,
 }
 impl KnotFile {
     pub fn is_symling(&self) -> bool {

@@ -1,14 +1,6 @@
 use anyhow::Result;
-use crossterm::{
-    ExecutableCommand,
-    event::{
-        self, DisableFocusChange, EnableFocusChange, Event, KeyCode, KeyEventKind, KeyModifiers,
-    },
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
@@ -19,7 +11,10 @@ use ratatui::{
 };
 use std::path::{Path, PathBuf};
 
-use crate::{USER_AWAY_MSG, USER_CAMEBACK_MSG};
+use crate::{
+    USER_AWAY_MSG, USER_CAMEBACK_MSG,
+    cli::visualization::rata_utils::{rata_clean, rata_init},
+};
 
 pub enum ResolverFiles {
     Archiving,
@@ -175,11 +170,7 @@ pub fn resolve_files<P: AsRef<Path>>(
         needs_redraw: true,
     };
 
-    enable_raw_mode()?;
-    std::io::stdout().execute(EnterAlternateScreen)?;
-    std::io::stdout().execute(EnableFocusChange)?;
-
-    let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
+    let mut terminal = rata_init()?;
 
     let root_path_str = root_path
         .map(|p| {
@@ -438,7 +429,7 @@ pub fn resolve_files<P: AsRef<Path>>(
         }
 
         if let Some(status) = handle_input(&events, files.len(), &mut destinations, &mut state) {
-            cleanup_terminal()?;
+            rata_clean()?;
             if status {
                 break;
             } else {
@@ -451,7 +442,7 @@ pub fn resolve_files<P: AsRef<Path>>(
         }
     }
 
-    cleanup_terminal()?;
+    rata_clean()?;
 
     let mut resolved = ResolvedFiles {
         first: Vec::new(),
@@ -468,13 +459,6 @@ pub fn resolve_files<P: AsRef<Path>>(
     }
 
     Ok(resolved)
-}
-
-fn cleanup_terminal() -> Result<()> {
-    disable_raw_mode()?;
-    std::io::stdout().execute(DisableFocusChange)?;
-    std::io::stdout().execute(LeaveAlternateScreen)?;
-    Ok(())
 }
 
 fn handle_input(

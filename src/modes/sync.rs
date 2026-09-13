@@ -4,21 +4,24 @@ use futures::{
     TryStreamExt,
     stream::{self, StreamExt},
 };
-use indicatif::{
-    HumanBytes, MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle,
-};
+use indicatif::HumanBytes;
 use std::{
     collections::HashSet,
-    fmt::Write,
     path::{Path, PathBuf},
-    sync::Arc,
-    time::{Duration, Instant},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Instant,
 };
 use tracing::debug;
 
 use crate::{
     STABLE_CHANNELS_PER_SESSION,
-    cli::visualization::resolver::{ResolverFiles, resolve_files},
+    cli::{
+        spinners::sync_load::{SyncLoading, clear_progress, use_terminal_spinner},
+        visualization::resolver::{ResolverFiles, resolve_files},
+    },
     configuration::MainConfig,
     knot::{Knot, file::KnotFile, file_diffs::FileDiffs, remote::RemoteKnot},
     utils::{
@@ -49,65 +52,46 @@ pub async fn sync(
     remote: &RemoteKnot,
     config: Arc<MainConfig>,
     non_interactive: bool,
-    main_progress: Option<&MultiProgress>,
+    sync_load: &SyncLoading,
 ) -> Result<()> {
     let remote_k = &remote.knot;
     let diff = source.difference(&remote.knot);
-    let is_ci_env = is_ci_environment();
     if diff.source_unique.is_empty()
         && diff.remote_unique.is_empty()
         && diff.conflicts.is_empty()
         && diff.archived.is_empty()
     {
-        if let Some(m) = main_progress
-            && !is_ci_env
-        {
-            m.println(format!(
-                " {}",
-                "✔  Directory is synchronized with source".green()
-            ))?;
-            m.clear()?;
-            m.set_draw_target(ProgressDrawTarget::hidden());
-        } else {
-            eprintln!("Directories are already synchronized");
-        }
+        sync_load.print(format!(
+            " {}",
+            "✔  Directory is synchronized with source".green()
+        ))?;
+        sync_load.cli_clear_and_hide()?;
+
         // Directories are synchronized
         return Ok(());
     }
 
     if !non_interactive {
-        if let Some(m) = main_progress
-            && !m.is_hidden()
-        {
-            m.clear()?;
-            m.set_draw_target(ProgressDrawTarget::hidden());
-        }
+        sync_load.cli_clear_and_hide()?;
         if diff.visualization() {
-            eprintln!(" {}", "✖  Synchronization was canceled".red());
+            sync_load.print_under(format!(" {}", "✖  Synchronization was canceled".red()))?;
             return Ok(());
         }
     }
 
-    if let Some(m) = main_progress
-        && m.is_hidden()
-        && !is_ci_env
-    {
-        m.set_draw_target(ProgressDrawTarget::stderr());
-    }
+    sync_load.cli_restore();
     let behavior = &remote.behavior;
     let compress = config.features.compress;
     let now = Instant::now();
-    if is_ci_env {
-        eprintln!("Syncing...");
-    }
+    sync_load.ci_print("Syncing...");
     tokio::try_join!(
         handle_conflicts(source, remote_k, &diff.conflicts, &behavior.conflicts),
         handle_uniques(
-            main_progress,
             (source, remote_k),
             &diff,
             &behavior.uniques,
-            compress
+            compress,
+            sync_load
         )
     )?;
     debug!("Synchronization took {:.2?}", now.elapsed());
@@ -220,12 +204,12 @@ async fn handle_conflicts(
 }
 
 async fn handle_uniques(
-    main_progress: Option<&MultiProgress>,
     // Source and Remote (In this order)
     (source, remote): (&Knot, &Knot),
     diffs: &FileDiffs,
     uniques: &UniqueBehavior,
     compress: bool,
+    sync_load: &SyncLoading,
 ) -> Result<()> {
     match uniques {
         UniqueBehavior::Ask => {
@@ -255,13 +239,13 @@ async fn handle_uniques(
 
                 if !source_to_add.is_empty() {
                     add_unique_files(
-                        main_progress,
                         &source_to_add,
                         &diffs.source_root_path,
                         &diffs.remote_root_path,
                         source,
                         remote,
                         compress,
+                        sync_load,
                     )
                     .await?;
                 }
@@ -297,13 +281,13 @@ async fn handle_uniques(
 
                 if !remote_to_add.is_empty() {
                     add_unique_files(
-                        main_progress,
                         &remote_to_add,
                         &diffs.remote_root_path,
                         &diffs.source_root_path,
                         remote,
                         source,
                         compress,
+                        sync_load,
                     )
                     .await?;
                 }
@@ -319,13 +303,13 @@ async fn handle_uniques(
         UniqueBehavior::Archive => {
             let now = Instant::now();
             add_unique_files(
-                main_progress,
                 &diffs.source_unique,
                 &diffs.source_root_path,
                 &diffs.remote_root_path,
                 source,
                 remote,
                 compress,
+                sync_load,
             )
             .await?;
             debug!(
@@ -357,22 +341,22 @@ async fn handle_uniques(
         UniqueBehavior::OnlyAdd => {
             tokio::try_join!(
                 add_unique_files(
-                    main_progress,
                     &diffs.source_unique,
                     &diffs.source_root_path,
                     &diffs.remote_root_path,
                     source,
                     remote,
                     compress,
+                    sync_load
                 ),
                 add_unique_files(
-                    main_progress,
                     &diffs.remote_unique,
                     &diffs.remote_root_path,
                     &diffs.source_root_path,
                     remote,
                     source,
                     compress,
+                    sync_load
                 )
             )?;
         }
@@ -380,13 +364,13 @@ async fn handle_uniques(
             let mut remote_refs: Vec<&KnotFile> = diffs.remote_unique.iter().collect();
             execute_optimized_deletes(&mut remote_refs, remote).await?;
             add_unique_files(
-                main_progress,
                 &diffs.source_unique,
                 &diffs.source_root_path,
                 &diffs.remote_root_path,
                 source,
                 remote,
                 compress,
+                sync_load,
             )
             .await?;
         }
@@ -394,13 +378,13 @@ async fn handle_uniques(
             let mut source_refs: Vec<&KnotFile> = diffs.source_unique.iter().collect();
             execute_optimized_deletes(&mut source_refs, source).await?;
             add_unique_files(
-                main_progress,
                 &diffs.remote_unique,
                 &diffs.remote_root_path,
                 &diffs.source_root_path,
                 remote,
                 source,
                 compress,
+                sync_load,
             )
             .await?;
         }
@@ -446,13 +430,13 @@ const MAX_BATCH_BYTES: u64 = 16 * 1024 * 1024; // 16 MB per batch chunk
 const MAX_BATCH_FILES: usize = 256; // Max files per open SSH channel
 
 pub async fn add_unique_files<P, F>(
-    main_progress: Option<&MultiProgress>,
     unique_files: &[F],
     from_root_path: P,
     to_root_path: P,
     from_knot: &Knot,
     to_knot: &Knot,
     compress: bool,
+    sync_load: &SyncLoading,
 ) -> Result<()>
 where
     P: AsRef<Path>,
@@ -495,37 +479,29 @@ where
 
     let dirs_to_make = Instant::now();
     if !dirs_to_create.is_empty() {
-        let spinner = if !is_ci_environment() {
-            let spinner = create_spinner(main_progress, "Creating directories...");
-            spinner.enable_steady_tick(Duration::from_millis(80));
-            Some(spinner)
-        } else {
-            eprintln!("Creating directories...");
-            None
-        };
+        let spinner = sync_load.create_spinner("Creating directories...");
+        let stop_term_spinner = use_terminal_spinner();
+
         let mut dirs: Vec<PathBuf> = dirs_to_create.into_iter().collect();
         dirs.sort_by_key(|d| d.components().count());
         to_knot.mkdir_batch(dirs).await?;
+
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
+        }
+
+        if let Some(term_spinner_stop) = stop_term_spinner {
+            term_spinner_stop.store(true, Ordering::Relaxed);
         }
     }
     debug!("Dirs to make took: {:.2?}", dirs_to_make.elapsed());
 
     if small_files.is_empty() && large_files.is_empty() {
-        if let Some(m) = main_progress {
-            let msg = " No files to transfer".to_string();
-            let log_pb = m.add(ProgressBar::new(0));
-            log_pb.set_style(ProgressStyle::with_template("{msg}").unwrap());
-            log_pb.finish_with_message(msg);
-        } else {
-            eprintln!(" No files to transfer");
-        }
+        sync_load.print_under("  No files to transfer")?;
         return Ok(());
     }
 
-    let is_ci_env = is_ci_environment();
-    let emoji = if is_ci_env {
+    let emoji = if is_ci_environment() {
         "📦"
     } else {
         &" 󰏗".yellow().to_string()
@@ -536,30 +512,31 @@ where
         small_files.len(),
         large_files.len(),
     );
-    if let Some(m) = main_progress
-        && !is_ci_env
-    {
-        let log_pb = m.add(ProgressBar::new(0));
-        log_pb.set_style(ProgressStyle::with_template("{msg}").unwrap());
-        log_pb.finish_with_message(breakdown_msg);
-    } else {
-        eprintln!("{breakdown_msg}");
-        eprintln!("Working on file sending...");
-    }
+    sync_load.print_under(breakdown_msg)?;
+    sync_load.ci_print("Working on file sending...");
+
     debug!("The set up to transfer took: {:.2?}", setup_time.elapsed());
-    let pb = create_sync_progress_bar(main_progress, large_files.len() + small_files.len());
+    let total_tasks = large_files.len() + small_files.len();
+    let pb = sync_load.create_sync_progress_bar(total_tasks);
+    let done_tasks = Arc::new(AtomicUsize::new(0));
 
     let pb_large = pb.clone();
+    let done_tasks_large = Arc::clone(&done_tasks);
+
     let large_transfer = stream::iter(large_files)
         .map(|file| {
             let pb_clone = pb_large.clone();
+            let done_tasks_ref = Arc::clone(&done_tasks_large);
             async move {
                 let path = file.path.clone();
                 let relative = file.relative_path(from_root);
                 let foreign_path = to_root.join(relative);
                 from_knot.transfer_to(to_knot, &path, &foreign_path).await?;
-                if let Some(pb) = pb_clone {
-                    pb.inc(1);
+
+                let current_done = done_tasks_ref.fetch_add(1, Ordering::SeqCst) + 1;
+                if total_tasks > 0 {
+                    let progress = (current_done as f64 / total_tasks as f64) * 100.0;
+                    SyncLoading::inc(pb_clone.as_ref(), 1, progress as usize, total_tasks);
                 }
                 Ok::<(), anyhow::Error>(())
             }
@@ -568,6 +545,8 @@ where
         .try_collect::<Vec<()>>();
 
     let pb_small = pb.clone();
+    let done_tasks_small = Arc::clone(&done_tasks);
+
     let small_transfer = async move {
         small_files.sort_unstable_by(|a, b| a.path.cmp(&b.path));
         let mut batches = Vec::new();
@@ -590,12 +569,23 @@ where
         stream::iter(batches)
             .map(|batch| {
                 let pb_clone = pb_small.clone();
+                let done_tasks_ref = Arc::clone(&done_tasks_small);
                 async move {
                     let batch_size = from_knot
                         .transfer_batch(to_knot, &batch, from_root, to_root, compress)
                         .await?;
-                    if let Some(pb) = pb_clone {
-                        pb.inc(batch_size as u64);
+
+                    let current_done = done_tasks_ref
+                        .fetch_add(batch_size as usize, Ordering::SeqCst)
+                        + batch_size as usize;
+                    if total_tasks > 0 {
+                        let progress = (current_done as f64 / total_tasks as f64) * 100.0;
+                        SyncLoading::inc(
+                            pb_clone.as_ref(),
+                            batch_size as u64,
+                            progress as usize,
+                            total_tasks,
+                        );
                     }
                     Ok::<(), anyhow::Error>(())
                 }
@@ -610,59 +600,8 @@ where
     if let Some(pb) = pb {
         pb.finish_with_message("✔  Synchronization complete!".green().to_string());
     }
-    if let Some(m) = main_progress {
-        m.clear()?;
-    }
+    clear_progress();
+
+    sync_load.cli_clear()?;
     Ok(())
-}
-
-/// Won't return the progress bar if this is CI/CD environment
-pub fn create_sync_progress_bar(
-    main_progress: Option<&MultiProgress>,
-    total_tasks: usize,
-) -> Option<ProgressBar> {
-    let pb = if let Some(m) = main_progress {
-        m.add(ProgressBar::new(total_tasks as u64))
-    } else {
-        ProgressBar::new(total_tasks as u64)
-    };
-    pb.set_style(
-        ProgressStyle::with_template(
-            " {spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {pos}/{len} ({rate}, ETA {eta}) {wide_msg}",
-        )
-        .unwrap()
-        .with_key("rate", |state: &ProgressState, w: &mut dyn Write| {
-            write!(w, "{:.0} Files/s", state.per_sec()).unwrap();
-        })
-        .progress_chars("█▉▊▋▌▍▎▏ ")
-        .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
-    );
-    pb.enable_steady_tick(Duration::from_millis(80));
-    if is_ci_environment() {
-        pb.set_draw_target(ProgressDrawTarget::hidden());
-        pb.finish_and_clear();
-        None
-    } else {
-        Some(pb)
-    }
-}
-
-pub fn create_spinner(main_progress: Option<&MultiProgress>, message: &'static str) -> ProgressBar {
-    let pb = if let Some(m) = main_progress {
-        m.add(ProgressBar::new_spinner())
-    } else {
-        ProgressBar::new_spinner()
-    };
-    pb.set_style(
-        ProgressStyle::with_template(" {spinner:.green} [{elapsed_precise}] {msg}")
-            .unwrap()
-            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
-    );
-    pb.set_message(message);
-    pb.enable_steady_tick(Duration::from_millis(80));
-    if is_ci_environment() {
-        pb.set_draw_target(ProgressDrawTarget::hidden());
-        pb.finish_and_clear();
-    }
-    pb
 }

@@ -22,6 +22,9 @@ pub struct FileDiffs {
     /// Files that has both directories, but different hash
     pub conflicts: Vec<(KnotFile, KnotFile)>,
 
+    /// Files in both source and remote
+    pub synced: Vec<(KnotFile, KnotFile)>,
+
     /// Files that has Archive prefix in name
     pub archived: Vec<KnotFile>,
 
@@ -83,20 +86,23 @@ impl FileDiffs {
             })
             .collect();
 
+        let mut synced: Vec<(KnotFile, KnotFile)> = vec![];
         let conflicts: Vec<(KnotFile, KnotFile)> = remote_map
             .iter()
             .filter_map(|(path, remote_file)| {
                 let source_file = source_map.get(path);
-                if let Some(source_file) = source_file
-                    && source_file.content_hash != remote_file.content_hash
-                {
-                    Some(((*source_file).clone(), (*remote_file).clone()))
+                if let Some(source_file) = source_file {
+                    if source_file.content_hash != remote_file.content_hash {
+                        Some(((*source_file).clone(), (*remote_file).clone()))
+                    } else {
+                        synced.push(((*source_file).clone(), (*remote_file).clone()));
+                        None
+                    }
                 } else {
                     None
                 }
             })
             .collect();
-
         FileDiffs {
             source_unique,
             remote_unique,
@@ -104,6 +110,7 @@ impl FileDiffs {
             archived,
             source_root_path: source_path,
             remote_root_path: remote_path,
+            synced,
         }
     }
 

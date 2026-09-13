@@ -1,8 +1,6 @@
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;
-use futures::future;
-use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use knot::{
     cli::{
         KnotArgs, ModeArgs,
@@ -11,21 +9,18 @@ use knot::{
         visualization::{config::visualize_configuration, dashboard},
     },
     configuration::MainConfig,
-    knot::{file::KnotFile, manager::KnotManager},
     modes::{
-        archiving::handle_archiving, archiving_local::handle_local_archiving, crawl::crawl,
-        file::handle_files, setup::setup,
+        archiving::handle_archiving,
+        archiving_local::handle_local_archiving,
+        crawl::crawl,
+        file::handle_files,
+        main_sync::{handle_sync_notifications, main_sync},
+        setup::setup,
     },
-    utils::{
-        env::is_ci_environment, notifications::send_notification,
-        shell_complete::generate_shell_complete,
-    },
+    utils::{notifications::send_notification, shell_complete::generate_shell_complete},
 };
 use parse_size::parse_size;
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 use tracing::debug;
 use tracing_appender::non_blocking;
 use tracing_subscriber::EnvFilter;
@@ -48,7 +43,6 @@ async fn main() -> Result<()> {
             let (main_config, mut knots) = setup(config_path)
                 .await
                 .map_err(|e| anyhow!("Setup failed: {e}"))?;
-
             let statuses = main_sync(&mut knots, main_config, None, non_interactive).await?;
             if notifications {
                 handle_sync_notifications(&statuses);
@@ -171,166 +165,7 @@ async fn main() -> Result<()> {
             config_path,
         } => remove_actions(actions, config_path)?,
         ModeArgs::Complete { shell } => generate_shell_complete(shell)?,
-        ModeArgs::Dashboard {
-            config_path,
-            notifications,
-        } => dashboard::show_dashborad(config_path, notifications).await?,
+        ModeArgs::Dashboard { config_path } => dashboard::show_dashborad(config_path).await?,
     };
     Ok(())
-}
-
-async fn main_sync(
-    knots: &mut KnotManager,
-    main_config: Arc<MainConfig>,
-    source_files: Option<Vec<KnotFile>>,
-    non_interactive: bool,
-) -> Result<Vec<Result<()>>> {
-    let start_time = Instant::now();
-    let source_fut = async {
-        if let Some(files) = source_files {
-            knots.source.files = files;
-            Ok(())
-        } else {
-            knots
-                .source
-                .set_folder(Arc::clone(&main_config))
-                .await
-                .map_err(|e| anyhow!("Source setup failed: {e}"))
-        }
-    };
-    let remotes_fut = async {
-        KnotManager::update_remotes(&mut knots.remotes, Arc::clone(&main_config))
-            .await
-            .map_err(|e| anyhow!("Remote update failed: {e}"))
-    };
-    tokio::try_join!(source_fut, remotes_fut)?;
-    debug!("Update took: {:0.2?}", start_time.elapsed());
-
-    let statuses = if main_config.experimental.async_sync {
-        let sync_fut = knots.remotes.iter().enumerate().map(|(index, remote)| {
-            let source = &knots.source;
-
-            let config_clone = Arc::clone(&main_config);
-            if is_ci_environment() {
-                eprintln!("Doing remote Knot #{index} ...");
-            }
-            async move {
-                source
-                    .sync(remote, config_clone, non_interactive, None)
-                    .await
-                    .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
-            }
-        });
-        future::join_all(sync_fut).await
-    } else {
-        let m = MultiProgress::new();
-        let node_graph_pb = m.add(ProgressBar::new_spinner());
-        if is_ci_environment() {
-            m.set_draw_target(ProgressDrawTarget::hidden());
-            node_graph_pb.set_draw_target(ProgressDrawTarget::hidden());
-        }
-        node_graph_pb.set_style(
-            ProgressStyle::with_template(" {prefix:.cyan}{spinner:.blue}{msg}")
-                .unwrap()
-                // .tick_chars("󰪞󰪟󰪠󰪡󰪢󰪣󰪤󰪥")
-                // .tick_chars("○◎●◎◌"),
-                .tick_chars(""),
-        );
-        node_graph_pb.enable_steady_tick(Duration::from_millis(500));
-
-        let total_remotes = knots.remotes.len();
-        let mut statuses = Vec::with_capacity(total_remotes);
-
-        for (index, remote) in knots.remotes.iter().enumerate() {
-            let mut prefix = String::new();
-            for i in 0..index {
-                let node_str = "".cyan().to_string();
-                let pipe_str = if i == index - 1 {
-                    format!(
-                        "{}{}{}",
-                        "—".cyan(),
-                        "—".truecolor(137, 179, 188),
-                        "—".blue()
-                    )
-                } else {
-                    "———".cyan().to_string()
-                };
-
-                prefix.push_str(&format!("{} {}", node_str, pipe_str));
-            }
-            node_graph_pb.set_prefix(prefix);
-
-            let mut msg = String::new();
-            for _ in (index + 1)..total_remotes {
-                msg.push_str(" ———");
-            }
-
-            msg.push_str(&format!(
-                "   [Syncing Knot {:02}/{:02}]",
-                index + 1,
-                total_remotes
-            ));
-            node_graph_pb.set_message(msg);
-
-            let source = &knots.source;
-            let config_clone = Arc::clone(&main_config);
-            let progress = if is_ci_environment() {
-                eprintln!("Doing remote Knot #{index}...");
-                m.set_draw_target(ProgressDrawTarget::hidden());
-                None
-            } else {
-                Some(&m)
-            };
-            statuses.push(
-                source
-                    .sync(remote, config_clone, non_interactive, progress)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Sync failed on remote #{index}: {e}")),
-            );
-        }
-
-        let mut final_graph = String::new();
-        for _ in 0..(total_remotes.saturating_sub(1)) {
-            final_graph.push_str(&format!("{} {}", "".green(), "———".green()));
-        }
-        if total_remotes > 0 {
-            final_graph.push_str(&format!("{}", "".green()));
-        }
-
-        node_graph_pb.set_style(ProgressStyle::with_template(" {msg:.green} ").unwrap());
-        node_graph_pb.finish_with_message(format!(
-            "{}    {}",
-            final_graph.green(),
-            "[All Knots Synced]".green()
-        ));
-
-        statuses
-    };
-
-    eprintln!(" {}", "<=> Synchronization process finished".blue());
-    Ok(statuses)
-}
-
-fn handle_sync_notifications(statuses: &[Result<()>]) {
-    let status_len = statuses.len();
-    let mut error_happened = 0;
-    let mut error_msgs = String::new();
-
-    for status in statuses {
-        if let Err(err) = status {
-            error_happened += 1;
-            error_msgs.push_str(&format!("{err}\n"));
-        }
-    }
-
-    if error_happened == 0 {
-        send_notification(
-            "Successful synchronization",
-            "All knots were successfully synchronized",
-        );
-    } else if error_happened == status_len {
-        send_notification("Synchronization fully failed", error_msgs);
-    } else {
-        send_notification("Partial failed synchronization", error_msgs);
-    }
 }

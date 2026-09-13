@@ -10,6 +10,7 @@ use crate::cli::subcommands::{
 pub mod autocomplete;
 pub mod modification;
 pub mod resolvers;
+pub mod spinners;
 pub mod subcommands;
 pub mod visualization;
 
@@ -77,15 +78,11 @@ pub enum ModeArgs {
         notifications: bool,
     },
 
-    /// All in one TUI Dashboard for file management
+    /// TUI Dashboard where you can see all files in your source and remote Knots
     Dashboard {
         /// Path to the configuration file or workspace folder
         #[arg(short, long)]
         config_path: Option<PathBuf>,
-
-        /// Send desktop notifications whenever a sync completes or fails
-        #[arg(short, long)]
-        notifications: bool,
     },
 
     /// Initialize your configuration file with comfy CLI

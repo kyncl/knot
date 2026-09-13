@@ -1,4 +1,5 @@
 use crate::{
+    cli::spinners::sync_load::SyncLoading,
     configuration::MainConfig,
     knot::{
         KnotType::{Local, SFTP, SSH},
@@ -17,7 +18,6 @@ use crate::{
 };
 use anyhow::Result;
 use futures::{StreamExt, TryStreamExt, stream};
-use indicatif::MultiProgress;
 use serde::{Deserialize, Serialize};
 use std::{
     ops::Range,
@@ -87,7 +87,7 @@ impl KnotConfig {
 }
 
 pub struct Knot {
-    adapter: Box<dyn KnotAdapter>,
+    adapter: Arc<dyn KnotAdapter>,
     pub resources: Arc<KnotResourcers>,
     pub credentials: Option<KnotCredentials>,
     /// To path specific dir
@@ -123,10 +123,10 @@ impl Knot {
             None
         };
         let path = PathBuf::from(convert_home_path(path.as_ref(), username)?);
-        let adapter: Box<dyn KnotAdapter> = {
+        let adapter: Arc<dyn KnotAdapter> = {
             match ktype {
-                Local => Box::new(LocalAdapter {}),
-                SSH => Box::new(SSHAdapter::new()),
+                Local => Arc::new(LocalAdapter {}),
+                SSH => Arc::new(SSHAdapter::new()),
                 SFTP => {
                     todo!("Right now there isn't SFTP adapter")
                 }
@@ -294,9 +294,9 @@ impl Knot {
         foreign: &RemoteKnot,
         config: Arc<MainConfig>,
         non_interactive: bool,
-        main_progress: Option<&MultiProgress>,
+        sync_load: &SyncLoading,
     ) -> Result<()> {
-        sync(self, foreign, config, non_interactive, main_progress).await
+        sync(self, foreign, config, non_interactive, sync_load).await
     }
 
     /// TODO: This function should be separated into adapters

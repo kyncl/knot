@@ -5,11 +5,11 @@ edition = "2024"
 authors = ["kyncl <145004616+kyncl@users.noreply.github.com>"]
 description = "A TUI utility for synchronizing multiple folders (knots) across devices"
 repository = "https://github.com/kyncl/knot"
-homepage = "https://github.com/kyncl/knot"
+# homepage = "https://github.com/kyncl/knot"
 license = "GPL-3.0-only"
 keywords = ["tui", "sync", "ratatui", "ssh", "backup"]
 categories = ["command-line-utilities", "filesystem", "network-programming"]
-readme = "README.md"
+# readme = "README.md"
 
 [profile.release]
 opt-level = 3
@@ -27,7 +27,7 @@ rayon = "1.12.0"
 tokio = { version = "1.52.3", features = ["full"] }
 
 # --- CLI & User Interface ---
-ansiterm = "0.12.2"
+# ansiterm = "0.12.2"
 clap = { version = "4.6.1", features = ["derive"] }
 clap_complete = "4.6"
 colored = "3.1.1"
@@ -40,19 +40,19 @@ terminal_size = "0.4.4"
 
 # --- Error Handling & Diagnostics ---
 anyhow = "1.0.102"
-color-eyre = "0.6.5"
+# color-eyre = "0.6.5"
 thiserror = "2"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # --- System & OS Integration ---
-auto-launch = "0.6.0"
+# auto-launch = "0.6.0"
 dirs = "6.0.0"
 ignore = "0.4"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 notify-rust = "4.18.0"
-shell-escape = "0.1.5"
+# shell-escape = "0.1.5"
 whoami = "2.1.2"
 
 # --- Serialization & Compression ---
@@ -68,7 +68,7 @@ tar = "0.4.46"
 # --- Data Types & Utilities ---
 chrono = "0.4.45"
 parse-size = "1.1.0"
-regex = "1.12.4"
+# regex = "1.12.4"
 strum = "0.28"
 strum_macros = "0.28"
 xxhash-rust = { version = "0.8.15", features = ["xxh3", "const_xxh3"] }

@@ -1,19 +1,16 @@
 use crate::{
     USER_AWAY_MSG, USER_CAMEBACK_MSG,
-    cli::visualization::resolver::FocusState,
+    cli::visualization::{
+        rata_utils::{rata_clean, rata_init},
+        resolver::FocusState,
+    },
     knot::file_diffs::FileDiffs,
     utils::formatting::{format_hash, format_relative_time},
 };
 use anyhow::Result;
-use crossterm::{
-    ExecutableCommand,
-    event::{self, EnableFocusChange, Event, KeyCode},
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+use crossterm::event::{self, Event, KeyCode};
 use indicatif::HumanBytes;
 use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
@@ -22,7 +19,7 @@ use ratatui::{
         ScrollbarState, Table, TableState, Tabs,
     },
 };
-use std::{io::stdout, time::Duration};
+use std::time::Duration;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ActiveTab {
@@ -58,13 +55,7 @@ pub fn file_diff_visualization_interactive(
         active_tab = ActiveTab::Archived;
     }
 
-    enable_raw_mode()?;
-    let mut stdout = stdout();
-    stdout.execute(EnterAlternateScreen)?;
-    stdout.execute(EnableFocusChange)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
+    let mut terminal = rata_init()?;
     let mut selected_idx: usize = 0;
     let mut needs_redraw = true;
     let mut focus_state = FocusState::Normal;
@@ -523,7 +514,6 @@ pub fn file_diff_visualization_interactive(
         }
     })();
 
-    disable_raw_mode()?;
-    std::io::stdout().execute(LeaveAlternateScreen)?;
+    rata_clean()?;
     res
 }

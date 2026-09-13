@@ -5,6 +5,7 @@ use crate::{
     ARCHIVE_PREFIX,
     cli::{
         resolvers::remote_indexing::resolve_remote_index,
+        spinners::sync_load::SyncLoading,
         subcommands::archiving::ArchiveSubcommand,
         visualization::resolver::{ResolverFiles, resolve_files},
     },
@@ -120,13 +121,13 @@ pub async fn handle_archiving(
                     let remote = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
                     let diffs = FileDiffs::new(&source, source_path, &remote, remote_path);
                     add_unique_files(
-                        None,
                         &diffs.remote_unique,
                         &chosen.knot.path,
                         &knots.source.path,
                         &chosen.knot,
                         &knots.source,
                         main_config.features.compress,
+                        &SyncLoading::simple_cli(),
                     )
                     .await?;
                     eprintln!("Transfer was successful");
@@ -170,13 +171,13 @@ pub async fn handle_archiving(
                         let remote = chosen.knot.crawl_dir(Arc::clone(&main_config)).await?;
                         let diffs = FileDiffs::new(&source, source_path, &remote, remote_path);
                         add_unique_files(
-                            None,
                             &diffs.remote_unique,
                             &chosen.knot.path,
                             &knots.source.path,
                             &chosen.knot,
                             &knots.source,
                             main_config.features.compress,
+                            &SyncLoading::simple_cli(),
                         )
                         .await?;
                         eprintln!("Transfer was successful");
@@ -234,13 +235,13 @@ pub async fn handle_archiving(
                         .prompt()?
                 {
                     add_unique_files(
-                        None,
                         &diffs.remote_unique,
                         &chosen.knot.path,
                         &knots.source.path,
                         &chosen.knot,
                         &knots.source,
                         main_config.features.compress,
+                        &SyncLoading::simple_cli(),
                     )
                         .await?;
                     eprintln!("If you have problems with file permissions with git, try `git checkout -- .`");
@@ -281,13 +282,13 @@ pub async fn handle_archiving(
     }
     let diffs = FileDiffs::new(&source, source_path, &chosen_files, remote_path);
     add_unique_files(
-        None,
         &diffs.remote_unique,
         &chosen.knot.path,
         &knots.source.path,
         &chosen.knot,
         &knots.source,
         main_config.features.compress,
+        &SyncLoading::simple_cli(),
     )
     .await?;
 
