@@ -114,12 +114,11 @@ impl DashEventHandler {
             SelectedPart::Remote => (&self.remote_visible_rows, self.remote_idx),
             _ => return,
         };
-        if let Some(row) = rows.get(idx) {
-            if row.is_dir {
+        if let Some(row) = rows.get(idx)
+            && row.is_dir {
                 self.expanded_dirs.insert(row.path.clone());
                 self.refresh_rows(source_nodes, remote_nodes);
             }
-        }
     }
 
     pub fn collapse_selected(&mut self, source_nodes: &[UiFileNode], remote_nodes: &[UiFileNode]) {
@@ -128,12 +127,11 @@ impl DashEventHandler {
             SelectedPart::Remote => (&self.remote_visible_rows, self.remote_idx),
             _ => return,
         };
-        if let Some(row) = rows.get(idx) {
-            if row.is_dir {
+        if let Some(row) = rows.get(idx)
+            && row.is_dir {
                 self.expanded_dirs.remove(&row.path);
                 self.refresh_rows(source_nodes, remote_nodes);
             }
-        }
     }
 
     pub fn toggle_selected(&mut self, source_nodes: &[UiFileNode], remote_nodes: &[UiFileNode]) {

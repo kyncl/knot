@@ -46,7 +46,7 @@ pub async fn main_sync(
             sync_load.ci_print("Doing remote Knot #{index} ...");
             async move {
                 source
-                    .sync(remote, config_clone, non_interactive, &sync_load)
+                    .sync(remote, config_clone, non_interactive, sync_load)
                     .await
                     .map_err(|e| anyhow!("Sync failed on remote #{index}: {e}"))
             }
