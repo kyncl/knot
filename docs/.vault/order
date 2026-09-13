@@ -8,6 +8,7 @@ knot modes
     initialization
     archiving
     daemon
+    dashboard
     configuration-visualization
     modification
     adding-and-removing
@@ -16,5 +17,5 @@ knot modes/internal modes
     file-system
     local-archive
 shell-completion
-cicd
+ci-cd
 roadmap

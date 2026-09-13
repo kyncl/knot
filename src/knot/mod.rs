@@ -295,7 +295,7 @@ impl Knot {
         config: Arc<MainConfig>,
         non_interactive: bool,
         sync_load: &SyncLoading,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         sync(self, foreign, config, non_interactive, sync_load).await
     }
 

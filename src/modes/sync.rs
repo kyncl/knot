@@ -47,19 +47,23 @@ pub fn get_dynamic_io_limit_single(knot: &Knot) -> usize {
     }
 }
 
+/// Returns if it was correct synchronization
+/// Canceling is not taken as 'correct synchronization'
 pub async fn sync(
     source: &Knot,
     remote: &RemoteKnot,
     config: Arc<MainConfig>,
     non_interactive: bool,
     sync_load: &SyncLoading,
-) -> Result<()> {
+) -> Result<bool> {
     let remote_k = &remote.knot;
     let diff = source.difference(&remote.knot);
     if diff.source_unique.is_empty()
         && diff.remote_unique.is_empty()
         && diff.conflicts.is_empty()
         && diff.archived.is_empty()
+        && diff.synced.len() == source.files.len()
+        && diff.synced.len() == remote.knot.files.len()
     {
         sync_load.print(format!(
             " {}",
@@ -68,14 +72,15 @@ pub async fn sync(
         sync_load.cli_clear_and_hide()?;
 
         // Directories are synchronized
-        return Ok(());
+        return Ok(true);
     }
 
     if !non_interactive {
         sync_load.cli_clear_and_hide()?;
         if diff.visualization() {
+            sync_load.cli_restore();
             sync_load.print_under(format!(" {}", "✖  Synchronization was canceled".red()))?;
-            return Ok(());
+            return Ok(false);
         }
     }
 
@@ -95,7 +100,7 @@ pub async fn sync(
         )
     )?;
     debug!("Synchronization took {:.2?}", now.elapsed());
-    Ok(())
+    Ok(true)
 }
 
 async fn handle_conflicts(

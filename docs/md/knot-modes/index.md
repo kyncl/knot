@@ -15,4 +15,7 @@ This chapter covers the following operational commands:
 * **[Initialization](initialization.html)**
 * **[Archiving](archiving.html)**
 * **[Daemon](daemon.html)**
+* **[Dashboard](dashboard.html)**
+* **[Configuration Visualization](configuration-visualization.html)**
 * **[Modification](modification.html)**
+* **[Adding and removing](adding-and-removing.html)**

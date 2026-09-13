@@ -5,7 +5,7 @@ use std::{sync::Arc, time::Instant};
 use tracing::debug;
 
 use crate::{
-    cli::spinners::sync_load::SyncLoading,
+    cli::spinners::sync_load::{SyncLoading, SyncStatus},
     configuration::MainConfig,
     knot::{file::KnotFile, manager::KnotManager},
     utils::notifications::send_notification,
@@ -16,7 +16,7 @@ pub async fn main_sync(
     main_config: Arc<MainConfig>,
     source_files: Option<Vec<KnotFile>>,
     non_interactive: bool,
-) -> Result<Vec<Result<()>>> {
+) -> Result<Vec<Result<bool>>> {
     let start_time = Instant::now();
     let source_fut = async {
         if let Some(files) = source_files {
@@ -69,7 +69,21 @@ pub async fn main_sync(
                     .map_err(|e| anyhow::anyhow!("Sync failed on remote #{index}: {e}")),
             );
         }
-        sync_load.node_finish(total_remotes);
+
+        let mut syncs = Vec::with_capacity(statuses.len());
+        for status in &statuses {
+            if let Ok(s) = status {
+                if *s {
+                    syncs.push(SyncStatus::Ok);
+                } else {
+                    syncs.push(SyncStatus::Canceled);
+                }
+            } else {
+                syncs.push(SyncStatus::Err);
+            }
+        }
+        sync_load.node_finish(total_remotes, &syncs);
+
         statuses
     };
 
@@ -77,7 +91,7 @@ pub async fn main_sync(
     Ok(statuses)
 }
 
-pub fn handle_sync_notifications(statuses: &[Result<()>]) {
+pub fn handle_sync_notifications(statuses: &[Result<bool>]) {
     let status_len = statuses.len();
     let mut error_happened = 0;
     let mut error_msgs = String::new();

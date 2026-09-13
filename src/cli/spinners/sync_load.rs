@@ -12,6 +12,13 @@ use std::{
 };
 use tokio::time::sleep;
 
+#[derive(PartialEq, Eq)]
+pub enum SyncStatus {
+    Ok,
+    Canceled,
+    Err,
+}
+
 /// For visualization of loadings, infos,...
 /// during the synchronization process
 pub struct SyncLoading {
@@ -105,24 +112,91 @@ impl SyncLoading {
         self.set_remaining_node(index, total_remotes);
     }
 
-    pub fn node_finish(&self, total_remotes: usize) {
+    pub fn node_finish(&self, total_remotes: usize, sync_statuses: &[SyncStatus]) {
         if let Some(ref cli) = self.cli
             && let Some(ref node_graph) = cli.node_graph
         {
             let mut final_graph = String::new();
-            for _ in 0..(total_remotes.saturating_sub(1)) {
-                final_graph.push_str(&format!("{} {}", "".green(), "———".green()));
-            }
-            if total_remotes > 0 {
-                final_graph.push_str(&format!("{}", "".green()));
+            for (i, status) in sync_statuses.iter().enumerate() {
+                let ball = match status {
+                    SyncStatus::Ok => "".green().to_string(),
+                    SyncStatus::Err => "".red().to_string(),
+                    SyncStatus::Canceled => "".yellow().to_string(),
+                };
+
+                final_graph.push_str(&ball);
+
+                if i < sync_statuses.len().saturating_sub(1) {
+                    let next_status = &sync_statuses[i + 1];
+
+                    let dash1 = match status {
+                        SyncStatus::Ok => "—".green().to_string(),
+                        SyncStatus::Err => "—".red().to_string(),
+                        SyncStatus::Canceled => "—".yellow().to_string(),
+                    };
+
+                    let dash3 = match next_status {
+                        SyncStatus::Ok => "—".green().to_string(),
+                        SyncStatus::Err => "—".red().to_string(),
+                        SyncStatus::Canceled => "—".yellow().to_string(),
+                    };
+
+                    let dash2 = match (status, next_status) {
+                        (SyncStatus::Ok, SyncStatus::Ok) => "—".green().to_string(),
+                        (SyncStatus::Err, SyncStatus::Err) => "—".red().to_string(),
+                        (SyncStatus::Canceled, SyncStatus::Canceled) => "—".yellow().to_string(),
+
+                        (SyncStatus::Ok, SyncStatus::Err) | (SyncStatus::Err, SyncStatus::Ok) => {
+                            "—".truecolor(197, 154, 89).to_string()
+                        }
+
+                        (SyncStatus::Ok, SyncStatus::Canceled)
+                        | (SyncStatus::Canceled, SyncStatus::Ok) => {
+                            "—".truecolor(220, 207, 99).to_string()
+                        }
+
+                        (SyncStatus::Err, SyncStatus::Canceled)
+                        | (SyncStatus::Canceled, SyncStatus::Err) => {
+                            "—".truecolor(231, 157, 113).to_string()
+                        }
+                    };
+
+                    let line = format!(" {dash1}{dash2}{dash3}");
+                    final_graph.push_str(&line);
+                }
             }
 
-            node_graph.set_style(ProgressStyle::with_template(" {msg:.green} ").unwrap());
-            node_graph.finish_with_message(format!(
-                "{}    {}",
-                final_graph.green(),
-                "[All Knots Synced]".green()
-            ));
+            if sync_statuses.is_empty() {
+                for _ in 0..(total_remotes.saturating_sub(1)) {
+                    final_graph.push_str(&format!("{} {}", "".normal(), "———".normal()));
+                }
+                if total_remotes > 0 {
+                    final_graph.push_str(&format!("{}", "".normal()));
+                }
+            }
+
+            let (msg, msg_color) = if sync_statuses.is_empty() {
+                ("[Nothing to Sync]", "normal")
+            } else if sync_statuses.iter().all(|s| *s == SyncStatus::Ok) {
+                ("[All Knots Synced]", "green")
+            } else if sync_statuses.contains(&SyncStatus::Err) {
+                ("[Sync Encountered Errors]", "red")
+            } else if sync_statuses.contains(&SyncStatus::Canceled) {
+                ("[Sync Canceled]", "yellow")
+            } else {
+                ("[Sync Finished]", "normal")
+            };
+
+            node_graph.set_style(ProgressStyle::with_template(" {msg} ").unwrap());
+
+            let formatted_msg = match msg_color {
+                "green" => msg.green().to_string(),
+                "red" => msg.red().to_string(),
+                "yellow" => msg.yellow().to_string(),
+                _ => msg.normal().to_string(),
+            };
+
+            node_graph.finish_with_message(format!("{}    {}", final_graph, formatted_msg));
         }
     }
 
