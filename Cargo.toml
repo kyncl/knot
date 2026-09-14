@@ -67,7 +67,7 @@ xxhash-rust = { version = "0.8.18", features = ["xxh3", "const_xxh3"] }
 rand = "0.10.2"
 
 # --- Cryptography ---
-aes-gcm = "0.10.3"
+aes-gcm = "0.11.1"
 
 [target.'cfg(unix)'.dependencies]
 russh = "0.61.2"
