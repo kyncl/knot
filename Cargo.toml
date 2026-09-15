@@ -6,7 +6,7 @@ authors = ["kyncl <145004616+kyncl@users.noreply.github.com>"]
 description = "A TUI utility for synchronizing multiple folders (knots) across devices"
 repository = "https://github.com/kyncl/knot"
 license = "GPL-3.0-only"
-keywords = ["tui", "sync", "ratatui", "ssh", "backup"]
+keywords = ["tui", "sync", "ratatui", "ssh", "backup", "cli", "data-transfer"]
 categories = ["command-line-utilities", "filesystem", "network-programming"]
 
 [profile.release]
