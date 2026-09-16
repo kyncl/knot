@@ -23,6 +23,9 @@ directories across devices, Knot handles them for you using
 [![Last Commit](https://img.shields.io/github/last-commit/kyncl/knot?style=for-the-badge)](https://github.com/kyncl/knot)
 [![Contributors](https://img.shields.io/github/contributors/kyncl/knot?style=for-the-badge)](https://github.com/kyncl/knot/graphs/contributors)
 
+<video src="https://github.com/user-attachments/assets/90a7ecb1-286b-4901-bbb3-b8edc213fe87" width="600" controls></video>
+<video src="https://github.com/user-attachments/assets/63b0ca00-98e5-42b5-9c82-9c4bc39217b5" width="600" controls></video>
+
 ## Features
 While Knot has a minimalist design, its underlying features
 are highly capable and designed to speed up your workflow
