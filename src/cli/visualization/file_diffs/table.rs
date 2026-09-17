@@ -1,7 +1,6 @@
 use colored::Colorize;
 use comfy_table::{
-    Attribute, Cell, Color as TableColor, ContentArrangement, Table, modifiers::UTF8_ROUND_CORNERS,
-    presets::UTF8_FULL_CONDENSED,
+    Attribute, Cell, Color as TableColor, ContentArrangement, Table, presets::UTF8_FULL_CONDENSED,
 };
 
 use crate::{
@@ -62,8 +61,7 @@ pub fn file_diff_visualization_table(diffs: &FileDiffs) {
 fn render_standard_table(files: &[KnotFile], width: u16, accent_color: TableColor) {
     let mut table = Table::new();
     table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .apply_modifier(UTF8_ROUND_CORNERS)
+        .load_style(UTF8_FULL_CONDENSED.with_rounded_corners())
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(width);
 
@@ -101,8 +99,7 @@ fn render_standard_table(files: &[KnotFile], width: u16, accent_color: TableColo
 fn render_conflicts_table(diffs: &FileDiffs, width: u16) {
     let mut table = Table::new();
     table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .apply_modifier(UTF8_ROUND_CORNERS)
+        .load_style(UTF8_FULL_CONDENSED.with_rounded_corners())
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(width);
 

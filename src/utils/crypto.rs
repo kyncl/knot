@@ -1,9 +1,7 @@
-use aes_gcm::{
-    Aes256Gcm, KeyInit, Nonce,
-    aead::{Aead, OsRng, rand_core::RngCore},
-};
+use aes_gcm::{Aes256Gcm, KeyInit, Nonce, aead::Aead};
 use anyhow::Result;
 use base64::{Engine, engine::general_purpose};
+use rand::{TryRng, rngs::SysRng};
 use russh::keys::ssh_key::sha2::{Digest, Sha256};
 
 const NONCE_SIZE: usize = 12;
@@ -23,11 +21,11 @@ pub fn encrypt_password(password: &str) -> Result<String> {
     let key = get_dynamic_key()?;
     let cipher = Aes256Gcm::new(&key.into());
     let mut nonce_bytes = [0u8; NONCE_SIZE];
-    OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    SysRng::default().try_fill_bytes(&mut nonce_bytes)?;
+    let nonce = Nonce::try_from(nonce_bytes)?;
 
     let ciphertext = cipher
-        .encrypt(nonce, password.as_bytes())
+        .encrypt(&nonce, password.as_bytes())
         .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
     let mut combined = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
@@ -49,10 +47,10 @@ pub fn decrypt_password(encrypted_password: &str) -> Result<String> {
     }
 
     let (nonce_bytes, ciphertext_bytes) = decoded_bytes.split_at(NONCE_SIZE);
-    let nonce = Nonce::from_slice(nonce_bytes);
+    let nonce = Nonce::try_from(nonce_bytes)?;
 
     let decrypted_bytes = cipher
-        .decrypt(nonce, ciphertext_bytes)
+        .decrypt(&nonce, ciphertext_bytes)
         .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
 
     Ok(String::from_utf8(decrypted_bytes)?)
