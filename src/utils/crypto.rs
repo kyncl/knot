@@ -21,8 +21,8 @@ pub fn encrypt_password(password: &str) -> Result<String> {
     let key = get_dynamic_key()?;
     let cipher = Aes256Gcm::new(&key.into());
     let mut nonce_bytes = [0u8; NONCE_SIZE];
-    SysRng::default().try_fill_bytes(&mut nonce_bytes)?;
-    let nonce = Nonce::try_from(nonce_bytes)?;
+    SysRng.try_fill_bytes(&mut nonce_bytes)?;
+    let nonce = Nonce::from(nonce_bytes);
 
     let ciphertext = cipher
         .encrypt(&nonce, password.as_bytes())
