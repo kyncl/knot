@@ -75,7 +75,7 @@ rand = "0.10.2"
 aes-gcm = "0.11.1"
 
 [target.'cfg(unix)'.dependencies]
-russh = "0.61.2"
+russh = "0.63.3"
 
 [target.'cfg(windows)'.dependencies]
 russh = { version = "0.61.2", default-features = false, features = ["ring"] }
