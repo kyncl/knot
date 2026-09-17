@@ -15,6 +15,11 @@ lto = "thin"
 panic = "abort"
 strip = true
 
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
 [dependencies]
 # --- Async & Concurrency ---
 async-recursion = "1.1.1"
