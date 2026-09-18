@@ -32,7 +32,6 @@ If you want to read about Knot's features, check out [docs homepage](docs/md/ind
 ## Requirements
 * OS (Linux, macOS or Windows)
 * Terminal
-* Internet
 * Electricity (optional)
 * Nerdfonts (optional, you'll see weird symbols otherwise)
 
