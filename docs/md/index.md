@@ -36,15 +36,7 @@ an intuitive terminal interface.
 [![Contributors](https://img.shields.io/github/contributors/kyncl/knot?style=for-the-badge)](https://github.com/kyncl/knot/graphs/contributors)
 
 ## Features
-While Knot has a minimalist design, its underlying features
-are highly capable and designed to speed up your workflow
-significantly.
-
 ### Performance
-* **Fast asynchronous algorithms:** Knot uses the Tokio and
-  Rayon crates to execute CPU-bound and I/O operations
-  concurrently. This makes synchronization significantly
-  faster than synchronous alternatives.
 * **Smart file batching:** Instead of sending files
   sequentially in arbitrary byte chunks, Knot groups small
   files into compressed batches. This drastically speeds up
@@ -53,8 +45,7 @@ significantly.
   caches the directory structure, allowing it to bypass
   unchanged files and save time during subsequent checks.
 * **[Compression](configuration/general-configuration.html#features):** Knot compresses file content to speed
-  up transfers over slow connections. This trade-off
-  increases CPU usage while reducing network payload size.
+  up transfers over slow connections.
 
 ### Networking
 * **[SSH Support](configuration/knot-configuration.html#connection-configuration):** Knot supports remote synchronization via
@@ -70,63 +61,36 @@ significantly.
 > Verify your settings or consult the server administrator.
 
 * **1:N Connections:** Knot can synchronize one source
-  directory with multiple remote Knots. A
-  remote Knot can be another local directory or a separate
-  SSH connection.
-* **[Private key authentication](configuration/knot-configuration.html#connection-configuration):** Knot fully supports SSH
-  authentication via standard private keys or passwords.
+  directory with multiple remote Knots.
+* **[Private key authentication](configuration/knot-configuration.html#connection-configuration)**
 * **[Smart credentials](configuration/knot-configuration.html#connection-configuration):** Quickly initialize a connection by
-  providing a URI format (e.g., `ssh://username@host:22`,
-  `type://username@host:port` see [Knot Connection Types](knots-and-their-types.html#knot-connection-types)).
-  Knot handles the underlying configuration automatically.
+  providing a URI format (`type://username@host:port` see [Knot Connection Types](knots-and-their-types.html#knot-connection-types)).
 
 ### User Experience
-* **[CLI initialization](knot-modes/initialization.html):** Knot requires a configuration file
-  to run. You can quickly generate this using the `knot init`
-  command.
-* **[Ignore files](configuration/general-configuration.html#ignore-patterns):** Prevent sensitive or unnecessary files
-  from syncing via Gitignore integration. Knot ignores
-  patterns in `.gitignore` or a custom `knotignore` file.
-* **Terminal interface:** Built with the Ratatui crate, the
-  TUI makes it easy to navigate project data, resolve
-  conflicts, and view archived files.
-* **[Custom behaviors](configuration/knot-configuration.html#behaviors):** Modify how Knot handles new files
-  and resolves conflicts. Behaviors let you override default
+* **[Ignore files](configuration/general-configuration.html#ignore-patterns):** Knot ignores
+  patterns from `.gitignore` or a custom `knotignore` file.
+* **[Custom behaviors](configuration/knot-configuration.html#behaviors):** Behaviors let you override default
   syncing rules for specific Knots.
-* **[Archiving](knot-modes/archiving.html):** Archive files to remove them from the
-  source directory without permanent deletion. Archived
-  files are compressed and stored on the remote Knot for
-  later recovery.
-* **System notifications:** Knot uses native OS
-  notifications to alert you when background operations
-  complete, freeing you from watching the terminal.
-* **[Shell autocomplete](shell-completion.html):** Autocomplete scripts are available
-  for most major shells to accelerate command navigation.
-* **[Daemon mode](knot-modes/daemon.html):** A built-in file scanner runs continuously
-  to detect directory changes. Synchronization starts
-  automatically when changes occur.
-
-> [!NOTE]
-> The daemon scanner uses debouncing. It waits briefly
-> after detecting a change to ensure file writes are
-> complete before syncing.
-
-* **Password saving:** Securely save passwords to your OS
-  keyring to avoid re-entering them.
-* **[Config files](configuration/index.html):** Configurations are stored in the `.knot`
-  folder. This allows for easy modification and version
-  control of your sync settings across environments.
+* **[Archiving](knot-modes/archiving.html):** Unique remote files are archived, compressed and renamed.
+  You can recover or delete them later.
+* **System notification**
+* **[Shell autocomplete](shell-completion.html)**
+* **[Daemon mode](knot-modes/daemon.html)**
+* **Password saving into OS keyring**
+* **[Config files](configuration/index.html)**
 * **Temporary files:** To prevent data corruption during
   transfers, Knot writes to temporary files first. If a sync
   fails, Knot recovers safely without altering original
   data.
+> [!NOTE]
+> Recover is not automatic. You must re-run Knot to clean up
+> temporal files and sync rest of the files.
 
 ## Requirements
-* A modern operating system (Linux, macOS, or Windows)
-* A terminal emulator
-* Internet or local network connection
+* OS (Linux, macOS or Windows)
+* Terminal
 * Electricity (optional)
-* Nerdfonts (optional, you'll see weird symbols otherwise)
+* Nerdfonts
 
 ## Installation
 You can install Knot by downloading a pre-compiled release
@@ -166,7 +130,7 @@ cargo build --release
 
 After building, move the executable (.\target\release\knot.exe)
 into a directory included in your system's PATH environment
-variable. This allows you to run the knot command globally.
+variable.
 
 > [!WARNING]
 > Windows Server is theoretically supported but remains untested.
@@ -175,19 +139,20 @@ variable. This allows you to run the knot command globally.
 
 ## Quick Start
 
-Navigate to the directory you want to synchronize, then
-create a configuration file by running:
+Before you start, you must create configuration:
 
 ```bash
 knot init
 ```
 
-After providing the requested values in the prompt, start
-the synchronization process:
+After initialization, you can run the sync command:
 
 ```bash
 knot sync
+# In case your config is located in different directory
+knot sync -c /path/to/your/config
 ```
+And that's it. You synced your files, congrats.
 
 ## License & Commercial Use
 
